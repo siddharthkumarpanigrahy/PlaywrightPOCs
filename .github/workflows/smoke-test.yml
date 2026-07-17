@@ -1,7 +1,10 @@
 name: OTC GUI Login Smoke Test
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+
+  schedule:
+    - cron: '30 8 * * *'
 
 jobs:
   smoke-test:
@@ -26,3 +29,9 @@ jobs:
       - name: Run Smoke Test
         run: |
          xvfb-run python test.py
+         
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+         name: SmokeTestReport
+         path: report.txt
