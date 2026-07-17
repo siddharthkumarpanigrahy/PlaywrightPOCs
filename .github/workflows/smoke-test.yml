@@ -7,6 +7,7 @@ on:
     - cron: '30 8 * * *'
 
 jobs:
+
   smoke-test:
 
     runs-on: ubuntu-latest
@@ -28,10 +29,43 @@ jobs:
 
       - name: Run Smoke Test
         run: |
-         xvfb-run python test.py
-         
+          xvfb-run python test.py
+
       - name: Upload Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-         name: SmokeTestReport
-         path: report.txt
+          name: SmokeTestReport
+          path: |
+            report_*.txt
+            login_success.png
+
+      - name: Send Email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.office365.com
+          server_port: 587
+          secure: false
+
+          username: ${{ secrets.OUTLOOK_USER }}
+          password: ${{ secrets.OUTLOOK_PASSWORD }}
+
+          subject: Playwright | OTC-GUI | Smoke Test Report
+
+          to: siddharth.panigrahy@deutsche-boerse.com
+
+          from: Playwright
+
+          body: |
+            
+            The OTC GUI Login Smoke Test execution has completed.
+
+            Please find the attached report and screenshot.
+
+            Regards,
+            Playwright Automation
+
+          attachments: |
+            report_*.txt
+            login_success.png
