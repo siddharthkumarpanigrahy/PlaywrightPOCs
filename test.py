@@ -80,13 +80,48 @@ with sync_playwright() as p:
 
         result = f"FAILED - {e}"
 
-    finally:
+    from datetime import datetime
 
-        with open("report.txt", "w") as report:
+finally:
 
-            report.write("Smoke Test - Login\n")
-            report.write(f"Status : {result}\n")
+    execution_time = datetime.now().strftime(
+        "%d-%b-%Y %H:%M:%S"
+    )
 
-        print(result)
+    with open("report.txt", "w") as report:
 
-        browser.close()
+        report.write("=" * 50 + "\n")
+        report.write("OTC GUI Smoke Test Report\n")
+        report.write("=" * 50 + "\n\n")
+
+        report.write(
+            f"Execution Date : {execution_time}\n"
+        )
+
+        report.write(
+            "Environment    : Smoke2\n"
+        )
+
+        report.write(
+            "Application    : OTC GUI\n"
+        )
+
+        report.write(
+            "Test Case      : Login Smoke Test\n"
+        )
+
+        report.write(
+            f"Status         : {result}\n\n"
+        )
+
+        report.write(
+            "URL            : https://10.130.209.10:8443/OTC_GUI/\n"
+        )
+
+        report.write(
+            "Screenshot     : login_success.png\n"
+        )
+
+    print(result)
+
+    browser.close()
