@@ -1,6 +1,7 @@
 
 import os
 from playwright.sync_api import sync_playwright
+from datetime import datetime
 
 # Remove proxy settings inherited from the environment
 for proxy in [
@@ -80,7 +81,7 @@ with sync_playwright() as p:
 
         result = f"FAILED - {e}"
 
-    from datetime import datetime
+    
 
 finally:
 
@@ -91,7 +92,7 @@ finally:
     with open("report.txt", "w") as report:
 
         report.write("=" * 50 + "\n")
-        report.write("OTC GUI Smoke Test Report\n")
+        report.write("Playwright | OTC-GUI | Smoke Test Report\n")
         report.write("=" * 50 + "\n\n")
 
         report.write(
