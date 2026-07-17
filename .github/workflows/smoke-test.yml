@@ -25,4 +25,4 @@ jobs:
 
       - name: Run Smoke Test
         run: |
-          python test.py
+         xvfb-run python test.py
