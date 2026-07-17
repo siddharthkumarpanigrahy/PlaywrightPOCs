@@ -89,7 +89,11 @@ finally:
         "%d-%b-%Y %H:%M:%S"
     )
 
-    with open("report.txt", "w") as report:
+    report_file = (
+    f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+)
+
+with open(report_file, "w") as report:
 
         report.write("=" * 50 + "\n")
         report.write("Playwright | OTC-GUI | Smoke Test Report\n")
