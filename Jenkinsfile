@@ -6,19 +6,28 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                echo 'Repository checkout completed'
-            }
-        }
-
         stage('Verify Environment') {
             steps {
                 sh '''
                 hostname
-                pwd
-                ls -la
+                whoami
                 python3 --version
+                '''
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                pip3 install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Smoke Test') {
+            steps {
+                sh '''
+                python3 test.py
                 '''
             }
         }
