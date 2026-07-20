@@ -16,8 +16,17 @@ os.environ["no_proxy"] = "10.130.209.10"
 
 with sync_playwright() as p:
 
+    headless_mode = (
+        os.getenv("HEADLESS", "false").lower() == "true"
+    )
+
+    if headless_mode:
+        print("Running in headless mode")
+    else:
+        print("Running in headed mode")
+
     browser = p.firefox.launch(
-        headless=False
+        headless=headless_mode
     )
 
     context = browser.new_context(

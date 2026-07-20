@@ -18,7 +18,7 @@ pipeline {
         stage('Run Smoke Test') {
             steps {
                 sh '''
-                xvfb-run python3 test.py
+                    HEADLESS=true python3 test.py
                 '''
             }
         }
