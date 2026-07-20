@@ -1,6 +1,8 @@
 pipeline {
 
-    agent any
+    agent {
+        label 'otc-smoke2-primary_otcci'
+    }
 
     stages {
 
@@ -13,13 +15,12 @@ pipeline {
         stage('Verify Environment') {
             steps {
                 sh '''
+                hostname
                 pwd
                 ls -la
                 python3 --version
                 '''
             }
         }
-
     }
-
 }
