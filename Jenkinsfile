@@ -6,20 +6,11 @@ pipeline {
 
     stages {
 
-        stage('Verify Environment') {
-            steps {
-                sh '''
-                hostname
-                whoami
-                python3 --version
-                '''
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 sh '''
                 pip3 install -r requirements.txt
+                playwright install firefox
                 '''
             }
         }
@@ -27,7 +18,7 @@ pipeline {
         stage('Run Smoke Test') {
             steps {
                 sh '''
-                python3 test.py
+                xvfb-run python3 test.py
                 '''
             }
         }
