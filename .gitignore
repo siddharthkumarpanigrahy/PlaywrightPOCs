@@ -2,6 +2,13 @@
 __pycache__/
 *.pyc
 
+# Logs
+*.log
+
+# Playwright
+playwright-report/
+test-results/
+
 # Runtime artifacts
 runtime/reports/*
 runtime/screenshots/*
