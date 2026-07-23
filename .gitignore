@@ -1,3 +1,18 @@
-report.txt
-login_success.png
+# Python
 __pycache__/
+*.pyc
+
+# Runtime artifacts
+runtime/reports/*
+runtime/screenshots/*
+runtime/logs/*
+runtime/generated_files/*
+
+# Keep folders
+!runtime/reports/.gitkeep
+!runtime/screenshots/.gitkeep
+!runtime/logs/.gitkeep
+!runtime/generated_files/.gitkeep
+
+# IDE
+.vscode/
