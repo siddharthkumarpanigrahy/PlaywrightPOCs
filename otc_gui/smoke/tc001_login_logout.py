@@ -3,6 +3,7 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime
 from common.login import login
 from common.logout import logout
+from common.browser import launch_browser
 
 # Remove proxy settings inherited from the environment
 for proxy in [
@@ -16,99 +17,81 @@ for proxy in [
 os.environ["NO_PROXY"] = "10.130.209.10"
 os.environ["no_proxy"] = "10.130.209.10"
 
-with sync_playwright() as p:
+playwright, browser, context, page = launch_browser()
 
-    headless_mode = (
-        os.getenv("HEADLESS", "false").lower() == "true"
+page.on(
+    "requestfailed",
+    lambda request: print(
+        "FAILED:", request.url, request.failure
+    )
+)
+
+result = "FAILED"
+
+try:
+    login(page)
+
+    page.wait_for_timeout(10000)
+
+    logout(page)
+
+    page.wait_for_timeout(10000)
+
+    page.screenshot(
+        path="login_success.png"
     )
 
-    if headless_mode:
-        print("Running in headless mode")
-    else:
-        print("Running in headed mode")
+    result = "PASSED"
 
-    browser = p.firefox.launch(
-        headless=headless_mode
+except Exception as e:
+
+    result = f"FAILED - {e}"
+
+finally:
+
+    execution_time = datetime.now().strftime(
+        "%d-%b-%Y %H:%M:%S"
     )
 
-    context = browser.new_context(
-        ignore_https_errors=True
+    report_file = (
+        f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     )
 
-    page = context.new_page()
+    with open(report_file, "w") as report:
 
-    page.on(
-        "requestfailed",
-        lambda request: print(
-            "FAILED:", request.url, request.failure
-        )
-    )
+        report.write("=" * 50 + "\n")
+        report.write("Playwright | OTC-GUI | Smoke Test Report\n")
+        report.write("=" * 50 + "\n\n")
 
-    result = "FAILED"
-
-    try:
-        login(page)
-
-        page.wait_for_timeout(10000)
-
-        logout(page)
-
-        page.wait_for_timeout(10000)
-
-        page.screenshot(
-            path="login_success.png"
+        report.write(
+            f"Execution Date : {execution_time}\n"
         )
 
-        result = "PASSED"
-
-    except Exception as e:
-
-        result = f"FAILED - {e}"
-
-    finally:
-
-        execution_time = datetime.now().strftime(
-            "%d-%b-%Y %H:%M:%S"
+        report.write(
+            "Environment    : Smoke2\n"
         )
 
-        report_file = (
-            f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        report.write(
+            "Application    : OTC GUI\n"
         )
 
-        with open(report_file, "w") as report:
+        report.write(
+            "Test Case      : Login Smoke Test\n"
+        )
 
-            report.write("=" * 50 + "\n")
-            report.write("Playwright | OTC-GUI | Smoke Test Report\n")
-            report.write("=" * 50 + "\n\n")
+        report.write(
+            f"Status         : {result}\n\n"
+        )
 
-            report.write(
-                f"Execution Date : {execution_time}\n"
-            )
+        report.write(
+            "URL            : https://10.130.209.10:8443/OTC_GUI/\n"
+        )
 
-            report.write(
-                "Environment    : Smoke2\n"
-            )
+        report.write(
+            "Screenshot     : login_success.png\n"
+        )
 
-            report.write(
-                "Application    : OTC GUI\n"
-            )
+    print(result)
 
-            report.write(
-                "Test Case      : Login Smoke Test\n"
-            )
-
-            report.write(
-                f"Status         : {result}\n\n"
-            )
-
-            report.write(
-                "URL            : https://10.130.209.10:8443/OTC_GUI/\n"
-            )
-
-            report.write(
-                "Screenshot     : login_success.png\n"
-            )
-
-        print(result)
-
-        browser.close()
+    browser.close()
+    playwright.stop()
