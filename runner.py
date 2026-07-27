@@ -17,6 +17,18 @@ def run_otc_smoke():
         check=True
     )
 
+def run_otc_security():
+    log("Executing OTC GUI Security Pack...")
+
+    subprocess.run(
+        [
+            "python3",
+            "-m",
+            "otc_gui.security.otct_7968_tc001_long_filename"
+        ],
+        check=True
+    )    
+
 
 if __name__ == "__main__":
 
@@ -29,6 +41,8 @@ if __name__ == "__main__":
         "PACK",
         "SMOKE"
     )
+    log(f"APPLICATION=[{application}] PACK=[{pack}]")
+
 
     if (
         application == "OTC_GUI"
@@ -36,6 +50,12 @@ if __name__ == "__main__":
     ):
 
         run_otc_smoke()
+
+    elif (
+        application == "OTC_GUI"
+        and pack == "SECURITY"
+    ):
+        run_otc_security()
 
     else:
 
