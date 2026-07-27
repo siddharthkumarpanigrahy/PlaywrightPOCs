@@ -1,6 +1,7 @@
 import os
 from playwright.sync_api import sync_playwright
 from datetime import datetime
+from common.login import login
 
 # Remove proxy settings inherited from the environment
 for proxy in [
@@ -45,37 +46,7 @@ with sync_playwright() as p:
     result = "FAILED"
 
     try:
-
-        print("Opening OTC GUI...")
-
-        page.goto(
-            "https://10.130.209.10:8443/OTC_GUI/",
-            wait_until="domcontentloaded",
-            timeout=120000
-        )
-
-        print("Page Loaded")
-        print("Page Title:", page.title())
-
-        page.locator(
-            'xpath=//*[@id="x-auto-11-input"]'
-        ).fill(
-            "AAACLUCLR001"
-        )
-
-        page.locator(
-            'xpath=//*[@id="x-auto-12-input"]'
-        ).fill(
-            "AAACLUCLR001"
-        )
-
-        print("Credentials entered")
-
-        page.locator(
-            'xpath=//*[@id="login"]'
-        ).click()
-
-        print("Login button clicked")
+        login(page)
 
         page.wait_for_timeout(10000)
 

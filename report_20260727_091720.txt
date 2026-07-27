@@ -1,0 +1,12 @@
+==================================================
+Playwright | OTC-GUI | Smoke Test Report
+==================================================
+
+Execution Date : 27-Jul-2026 09:17:20
+Environment    : Smoke2
+Application    : OTC GUI
+Test Case      : Login Smoke Test
+Status         : PASSED
+
+URL            : https://10.130.209.10:8443/OTC_GUI/
+Screenshot     : login_success.png
