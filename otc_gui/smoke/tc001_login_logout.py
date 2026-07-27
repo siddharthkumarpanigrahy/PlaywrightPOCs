@@ -7,6 +7,7 @@ from common.logout import logout
 from common.browser import launch_browser
 from common.report import generate_report
 from common.screenshot import capture_screenshot
+from common.logger import log
 
 
 # Remove proxy settings inherited from the environment
@@ -25,9 +26,7 @@ playwright, browser, context, page = launch_browser()
 
 page.on(
     "requestfailed",
-    lambda request: print(
-        "FAILED:", request.url, request.failure
-    )
+    lambda request: log(f"FAILED: {request.url} - {request.failure}")
 )
 
 result = "FAILED"
@@ -46,7 +45,7 @@ try:
     page,
     "login_logout_success"
     )
-    print(f"Screenshot saved: {screenshot_path}")
+    log(f"Screenshot saved: {screenshot_path}")
 
     result = "PASSED"
 
@@ -61,7 +60,7 @@ finally:
         result
     )
 
-    print(result)
+    log(f"Test Result: {result}")
 
     browser.close()
     playwright.stop()

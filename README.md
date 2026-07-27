@@ -1,0 +1,13 @@
+## Execution Packs
+
+APPLICATION
+
+- OTC_GUI
+- MC_GUI
+
+PACK
+
+- SMOKE
+- REGRESSION
+- SECURITY
+- ALL
