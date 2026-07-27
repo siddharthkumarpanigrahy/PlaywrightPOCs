@@ -1,17 +1,20 @@
 import os
-from playwright.sync_api import sync_playwright
+
 from datetime import datetime
+
 from common.login import login
 from common.logout import logout
 from common.browser import launch_browser
+from common.report import generate_report
+
 
 # Remove proxy settings inherited from the environment
-for proxy in [
+for proxy in (
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "http_proxy",
     "https_proxy"
-]:
+):
     os.environ.pop(proxy, None)
 
 os.environ["NO_PROXY"] = "10.130.209.10"
@@ -29,6 +32,7 @@ page.on(
 result = "FAILED"
 
 try:
+
     login(page)
 
     page.wait_for_timeout(10000)
@@ -38,7 +42,7 @@ try:
     page.wait_for_timeout(10000)
 
     page.screenshot(
-        path="login_success.png"
+        path="runtime/screenshots/login_logout_success.png"
     )
 
     result = "PASSED"
@@ -49,47 +53,10 @@ except Exception as e:
 
 finally:
 
-    execution_time = datetime.now().strftime(
-        "%d-%b-%Y %H:%M:%S"
+    generate_report(
+        "TC001_LOGIN_LOGOUT",
+        result
     )
-
-    report_file = (
-        f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    )
-
-    with open(report_file, "w") as report:
-
-        report.write("=" * 50 + "\n")
-        report.write("Playwright | OTC-GUI | Smoke Test Report\n")
-        report.write("=" * 50 + "\n\n")
-
-        report.write(
-            f"Execution Date : {execution_time}\n"
-        )
-
-        report.write(
-            "Environment    : Smoke2\n"
-        )
-
-        report.write(
-            "Application    : OTC GUI\n"
-        )
-
-        report.write(
-            "Test Case      : Login Smoke Test\n"
-        )
-
-        report.write(
-            f"Status         : {result}\n\n"
-        )
-
-        report.write(
-            "URL            : https://10.130.209.10:8443/OTC_GUI/\n"
-        )
-
-        report.write(
-            "Screenshot     : login_success.png\n"
-        )
 
     print(result)
 
