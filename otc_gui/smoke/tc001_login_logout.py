@@ -2,6 +2,7 @@ import os
 from playwright.sync_api import sync_playwright
 from datetime import datetime
 from common.login import login
+from common.logout import logout
 
 # Remove proxy settings inherited from the environment
 for proxy in [
@@ -47,6 +48,10 @@ with sync_playwright() as p:
 
     try:
         login(page)
+
+        page.wait_for_timeout(10000)
+
+        logout(page)
 
         page.wait_for_timeout(10000)
 

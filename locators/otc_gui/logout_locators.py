@@ -1,0 +1,1 @@
+LOGOUT_BUTTON = '//*[@id="logout"]'
