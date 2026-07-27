@@ -1,4 +1,5 @@
 from playwright.sync_api import Page
+from common.logger import log
 
 from common.config import (
     OTC_GUI_URL,
@@ -15,14 +16,14 @@ from locators.otc_gui.login_locators import (
 
 def login(page: Page):
 
-    print("Opening OTC GUI...")
+    log("Opening OTC GUI...")
 
     page.goto(
         OTC_GUI_URL,
         wait_until="domcontentloaded"
     )
 
-    print(f"Page Loaded: {page.title()}")
+    log(f"Page Loaded: {page.title()}")
 
     page.locator(
         USERNAME_TEXTBOX
@@ -32,10 +33,10 @@ def login(page: Page):
         PASSWORD_TEXTBOX
     ).fill(PASSWORD)
 
-    print("Credentials entered")
+    log("Credentials entered")
 
     page.locator(
         LOGIN_BUTTON
     ).click()
 
-    print("Login button clicked!")
+    log("Login button clicked!")

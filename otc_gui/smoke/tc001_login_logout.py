@@ -6,6 +6,7 @@ from common.login import login
 from common.logout import logout
 from common.browser import launch_browser
 from common.report import generate_report
+from common.screenshot import capture_screenshot
 
 
 # Remove proxy settings inherited from the environment
@@ -41,9 +42,11 @@ try:
 
     page.wait_for_timeout(10000)
 
-    page.screenshot(
-        path="runtime/screenshots/login_logout_success.png"
+    screenshot_path = capture_screenshot(
+    page,
+    "login_logout_success"
     )
+    print(f"Screenshot saved: {screenshot_path}")
 
     result = "PASSED"
 

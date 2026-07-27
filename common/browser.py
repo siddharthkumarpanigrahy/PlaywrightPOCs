@@ -1,4 +1,5 @@
 import os
+from common.logger import log
 
 from playwright.sync_api import (
     sync_playwright
@@ -22,9 +23,9 @@ def launch_browser():
     headless_mode = get_headless_mode()
 
     if headless_mode:
-        print("Running in headless mode")
+        log("Running in headless mode")
     else:
-        print("Running in headed mode")
+        log("Running in headed mode")
 
     browser = playwright.firefox.launch(
         headless=headless_mode
