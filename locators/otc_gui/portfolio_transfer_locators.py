@@ -10,7 +10,14 @@ class PortfolioTransferLocators:
 
     TRANSFER_TYPE = "#puTransferType"
 
+    ACCOUNT_TRANSFER_OPTION = (
+        ".ListViewDefaultAppearance-ListViewDefaultStyle-view"
+        ".ListViewDefaultAppearance-ListViewDefaultStyle-item"
+        )
+
     BOOK = "#puBook"
+
+    BOOK_OPTION = (".ListViewDefaultAppearance-ListViewDefaultStyle-item")
 
     MTM_ADJ = "#puMtmAdj"
 
