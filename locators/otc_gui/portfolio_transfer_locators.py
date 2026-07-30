@@ -1,26 +1,40 @@
-# locators/otc_gui/portfolio_transfer_locators.py
-
 class PortfolioTransferLocators:
 
-    ENTRY_TYPE = "#puEntryType"
-
-    TEMPLATE_LINK = "a:text('Template')"
+    # Entry section
+    ENTRY_TYPE = "#puEntryType input"
 
     FILE_UPLOAD = "#puUpload input[type='file']"
 
-    TRANSFER_TYPE = "#puTransferType"
+    # Transfer Type
+    TRANSFER_TYPE = "#puTransferType input"
+    ACCOUNT_TRANSFER_OPTION = "xpath=//*[text()='Account Transfer']"
 
-    ACCOUNT_TRANSFER_OPTION = (
-        ".ListViewDefaultAppearance-ListViewDefaultStyle-view"
-        ".ListViewDefaultAppearance-ListViewDefaultStyle-item"
-        )
+    # Book
+    BOOK_FIELD = "#puBook input"
 
-    BOOK = "#puBook"
+    # Source System Fields
+    CLIENT_ID_MW = "#puClientIdMw input"
 
-    BOOK_OPTION = (".ListViewDefaultAppearance-ListViewDefaultStyle-item")
+    CM_ID_MW = "#puCmIdMw input"
 
-    MTM_ADJ = "#puMtmAdj"
+    CLIENT_ID_OTHER = "#puClientIdOther input"
 
+    CM_ID_OTHER = "#puCmIdOther input"
+
+    # MtM
+    MTM_FIELD = "#puMtmAdj input"
+    MTM_ADJ_OPTION = "xpath=//*[text()='No']"
+
+    # Buttons
     CREATE_PORTFOLIO_TRANSFER = "#puTransfer"
 
+    CLEAR_BUTTON = "#puClear"
+
+    # Result Grid
     RESULT_GRID = "#puGrid"
+
+    UPLOAD_STATUS = "td[cellindex='2'] a"
+
+    TARGET_BOOK_RESULT = "td[cellindex='3'] div"
+
+    DESCRIPTION_RESULT = "td[cellindex='5'] div"

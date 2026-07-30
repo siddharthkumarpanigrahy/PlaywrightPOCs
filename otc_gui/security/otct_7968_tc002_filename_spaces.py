@@ -1,6 +1,5 @@
 import os
-from abc import ABC, abstractmethod
-from playwright.sync_api import Page as PlaywrightPage
+from playwright.sync_api import TimeoutError
 
 from common.login import login
 from common.logout import logout
@@ -9,8 +8,6 @@ from common.logger import log
 from locators.otc_gui.portfolio_transfer_locators import (
     PortfolioTransferLocators,
 )
-
-
 
 # Remove proxy settings inherited from the environment
 for proxy in (
@@ -51,90 +48,180 @@ try:
 
     # Portfolio Transfer Entry
     log("Navigating to Portfolio Transfer Entry")
+
     page.locator(
-    ".BlueTabPanelAppearance-BlueTabPanelStyle-tabStripText"
-).filter(
-    has_text="Portfolio Transfer Entry"
-).first.click()
+        ".BlueTabPanelAppearance-BlueTabPanelStyle-tabStripText"
+    ).filter(
+        has_text="Portfolio Transfer Entry"
+    ).first.click()
 
     page.wait_for_timeout(2000)
 
-    # Entry Type dropdown
+    # Entry Type
     log("Clicking on Entry Type dropdown")
+
     page.locator(
         PortfolioTransferLocators.ENTRY_TYPE
     ).click()
 
     page.wait_for_timeout(1000)
 
-    # Portfolio Upload
-    log("Clicking on Portfolio Upload")
+    log("Selecting Portfolio Upload")
+
     page.get_by_text(
         "Portfolio Upload"
     ).click()
 
     page.wait_for_timeout(2000)
 
-    # trailing space file path
-    log("Preparing to upload file with trailing space in filename")
-    TrailingSpace_filename_file = (
-        "./test_data/otc_gui/security/portfolio transfer/TrailingSpace .csv"
+    # Upload file
+    log(
+        "Preparing to upload file with trailing space in filename"
     )
 
-    # Uplload file with long filename
-    log("Uploading file with trailing space in filename")
+    trailing_space_file = (
+        "./test_data/otc_gui/security/"
+        "portfolio transfer/TrailingSpace .csv"
+    )
+
+    log(
+        "Uploading file with trailing space in filename"
+    )
+
     page.locator(
         PortfolioTransferLocators.FILE_UPLOAD
-    ).set_input_files(TrailingSpace_filename_file)
+    ).set_input_files(trailing_space_file)
+
+    page.wait_for_timeout(2000)
 
     # Transfer Type
     log("Clicking on Transfer Type dropdown")
+
     page.locator(
         PortfolioTransferLocators.TRANSFER_TYPE
     ).click()
 
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(1000)
 
-    page.screenshot(
-        path="runtime/screenshots/otct_7968_tc002_transfer_type_dropdown.png"
-    )
-
-    # Account Transfer Option
     log("Selecting Account Transfer option")
+
     page.locator(
         PortfolioTransferLocators.ACCOUNT_TRANSFER_OPTION
-    ).filter(
-        has_text="Account Transfer"
-    ).first.click()
-
-    # Book
-    log("Clicking on Book dropdown")
-    page.locator(
-        PortfolioTransferLocators.BOOK
     ).click()
 
-    # Book Option
-    log("Selecting Book option 'CBKFR_A1'")
-    page.locator(
-        PortfolioTransferLocators.BOOK_OPTION
-    ).filter(
-        has_text="CBKFR_A1"
-    ).first.click()
+    page.wait_for_timeout(2000)
 
+    transfer_type_value = page.locator(
+        "#puTransferType input"
+    ).input_value()
+
+    log(
+        f"Selected Transfer Type Value = "
+        f"[{transfer_type_value}]"
+    )
+
+    # --------------------------------------------------
+    # BOOK (Follow Java implementation)
+    # --------------------------------------------------
+
+    log("Setting Book value")
+
+    book_field = page.locator(
+        PortfolioTransferLocators.BOOK_FIELD
+    )
+
+    book_field.clear()
+    book_field.fill("CBKFR_A1")
+    book_field.press("Enter")
+
+    page.wait_for_timeout(5000)
+
+    book_value = page.locator(
+        "#puBook input"
+    ).input_value()
+
+    log(
+        f"Selected Book Value = "
+        f"[{book_value}]"
+    )
+
+    page.screenshot(
+        path="runtime/screenshots/"
+        "otct_7968_tc002_after_book_enter.png"
+    )
+
+    # --------------------------------------------------
+    # Source System values
+    # --------------------------------------------------
+
+    try:
+
+        client_other = page.locator(
+            "#puClientIdOther input"
+        ).input_value()
+
+        cm_mw = page.locator(
+            "#puCmIdMw input"
+        ).input_value()
+
+        cm_other = page.locator(
+            "#puCmIdOther input"
+        ).input_value()
+
+        log(
+            f"Other Client ID = [{client_other}]"
+        )
+
+        log(
+            f"MW CM ID = [{cm_mw}]"
+        )
+
+        log(
+            f"Other CM ID = [{cm_other}]"
+        )
+
+    except Exception as e:
+
+        log(
+            f"Unable to read source system values: {e}"
+        )
+
+    page.screenshot(
+        path="runtime/screenshots/"
+        "otct_7968_tc002_source_system_values.png"
+    )
+
+    # --------------------------------------------------
     # MTM
-    log("Clicking on MTM Adj dropdown")
+    # --------------------------------------------------
+
+    log("Clicking on MTM Adjustment dropdown")
+
     page.locator(
-        PortfolioTransferLocators.MTM_ADJ
+        PortfolioTransferLocators.MTM_FIELD
     ).click()
 
-    # MTM Option
-    log("Selecting MTM Adj option 'No'")
-    page.get_by_text(
-        "No"
+    page.wait_for_timeout(1000)
+
+    log("Selecting MTM Adjustment = No")
+
+    page.locator(
+        PortfolioTransferLocators.MTM_ADJ_OPTION
     ).click()
 
+    page.wait_for_timeout(2000)
+
+    page.screenshot(
+        path="runtime/screenshots/"
+        "otct_7968_tc002_after_mtm_selection.png"
+    )
+
+    # --------------------------------------------------
     # Create Portfolio Transfer
+    # --------------------------------------------------
+
     log("Creating Portfolio Transfer")
+
     page.locator(
         PortfolioTransferLocators.CREATE_PORTFOLIO_TRANSFER
     ).click()
@@ -142,16 +229,48 @@ try:
     page.wait_for_timeout(5000)
 
     page.screenshot(
-        path="runtime/screenshots/otct_7968_tc002_after_upload.png"
+        path="runtime/screenshots/"
+        "otct_7968_tc002_after_transfer.png"
     )
 
-    log("File uploaded successfully")
+    # --------------------------------------------------
+    # Result Validation
+    # --------------------------------------------------
+
+    upload_status = page.locator(
+        PortfolioTransferLocators.UPLOAD_STATUS
+    ).first.inner_text().strip()
+
+    target_book = page.locator(
+        PortfolioTransferLocators.TARGET_BOOK_RESULT
+    ).first.inner_text().strip()
+
+    description = page.locator(
+        PortfolioTransferLocators.DESCRIPTION_RESULT
+    ).first.inner_text().strip()
+
+    log(f"Upload Status: {upload_status}")
+    log(f"Target Book: {target_book}")
+    log(f"Description: {description}")
+
+    if upload_status != "FAILURE":
+        raise Exception(
+            "Expected upload status "
+            f"'FAILURE', got '{upload_status}'"
+        )
+
+    log(
+        "TC002 PASSED - Upload status is "
+        "FAILURE as expected"
+    )
 
     logout(page)
 
 except Exception as e:
+
     log(f"TEST FAILED: {e}")
 
 finally:
+
     browser.close()
     playwright.stop()
