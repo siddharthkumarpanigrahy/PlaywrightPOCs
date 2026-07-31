@@ -28,20 +28,21 @@ os.makedirs("runtime/screenshots", exist_ok=True)
 
 
 # --------------------------------------------------
-# Test Case specific Test Data
+# Test Data
 # --------------------------------------------------
 
 TARGET_BOOK = "CBKFR_A1"
 
-CLIENT_ID_MW = "clientIdMw"
-CLIENT_ID_OTHER = "clientIdOther"
-CM_ID_MW = "cmIdMw"
-CM_ID_OTHER = "cmIdOther"
-
-TRAILING_SPACE_FILE = (
+EXTRA_COLUMNS_FILE = (
     "./test_data/otc_gui/security/"
-    "portfolio transfer/TrailingSpace .csv"
+    "portfolio transfer/Portfolio_ExtraColumns.csv"
 )
+
+EXPECTED_ERROR_SNIPPETS = [
+    "Csv file headers error",
+    "Required file header",
+    "Uploaded file header"
+]
 
 
 # --------------------------------------------------
@@ -57,56 +58,7 @@ def wait_for_progress_bar_close(page, timeout=30000):
             timeout=timeout
         )
     except Exception:
-        # Some flows remove the progress bar from DOM instead of hiding it.
         pass
-
-
-def set_if_enabled(page, selector, value, field_name):
-    field = page.locator(selector)
-    field.wait_for(
-        state="visible",
-        timeout=10000
-    )
-
-    is_disabled = field.evaluate(
-        """e =>
-            e.disabled ||
-            e.getAttribute('aria-disabled') === 'true' ||
-            e.className.toLowerCase().includes('disabled')
-        """
-    )
-
-    current_value = field.input_value()
-
-    if is_disabled:
-        log(
-            f"Skipping {field_name}; field is disabled. "
-            f"Current value=[{current_value}]"
-        )
-        return current_value
-
-    log(f"Setting {field_name} to [{value}]")
-
-    field.click()
-    field.press("Control+A")
-    field.press("Delete")
-    field.press_sequentially(value)
-    field.press("Tab")
-
-    page.wait_for_timeout(500)
-
-    new_value = field.input_value()
-
-    log(f"{field_name} after set=[{new_value}]")
-
-    return new_value
-
-
-def select_dropdown_text(page, text):
-    page.get_by_text(
-        text,
-        exact=True
-    ).click()
 
 
 def confirm_mtm_if_present(page):
@@ -122,10 +74,9 @@ def confirm_mtm_if_present(page):
     log("MTM confirmation popup displayed")
 
     page.screenshot(
-        path="runtime/screenshots/mtm_confirmation_popup.png"
+        path="runtime/screenshots/tc005_mtm_confirmation_popup.png"
     )
 
-    # Try common GXT/HTML button texts first
     possible_buttons = [
         "Confirm",
         "Yes",
@@ -140,9 +91,7 @@ def confirm_mtm_if_present(page):
         )
 
         if button.count() > 0:
-            visible_buttons = button.all()
-
-            for item in visible_buttons:
+            for item in button.all():
                 try:
                     if item.is_visible():
                         item.click()
@@ -155,7 +104,6 @@ def confirm_mtm_if_present(page):
                 except Exception:
                     pass
 
-    # Fallback: click visible GXT button inside dialog/window
     gxt_buttons = page.locator(
         "div:has-text('Confirm'), "
         "div:has-text('Yes'), "
@@ -163,38 +111,103 @@ def confirm_mtm_if_present(page):
         "span:has-text('Yes')"
     )
 
-    count = gxt_buttons.count()
-
-    for index in range(count):
+    for index in range(gxt_buttons.count()):
         candidate = gxt_buttons.nth(index)
 
         try:
             if candidate.is_visible():
                 candidate.click()
-                log(
-                    "MTM confirmation clicked using GXT fallback"
-                )
+                log("MTM confirmation clicked using GXT fallback")
                 page.wait_for_timeout(2000)
                 return
         except Exception:
             pass
 
-    # Final diagnostic
-    popup_html = page.locator("body").inner_html()[:3000]
-
-    log(
-        "MTM popup was displayed, but no clickable "
-        "Confirm/Yes/OK button was found."
-    )
-
-    log(
-        f"Popup/body HTML sample: {popup_html}"
+    page.screenshot(
+        path="runtime/screenshots/tc005_mtm_popup_no_button_found.png"
     )
 
     raise Exception(
         "MTM confirmation popup displayed, "
-        "but no clickable confirmation button was found"
+        "but no clickable Confirm/Yes/OK button was found"
     )
+
+
+def close_ok_popup_if_present(page):
+    ok_button = page.get_by_text(
+        "OK",
+        exact=True
+    )
+
+    if ok_button.count() == 0:
+        ok_button = page.get_by_text(
+            "Ok",
+            exact=True
+        )
+
+    if ok_button.count() > 0:
+        for item in ok_button.all():
+            try:
+                if item.is_visible():
+                    item.click()
+                    log("Popup closed using OK button")
+                    page.wait_for_timeout(1000)
+                    return True
+            except Exception:
+                pass
+
+    return False
+
+
+def assert_validation_error(page, expected_snippets):
+    body_text = page.locator("body").inner_text()
+
+    log("VALIDATION BODY TEXT START")
+    log(body_text[:3000])
+    log("VALIDATION BODY TEXT END")
+
+    missing_snippets = []
+
+    for snippet in expected_snippets:
+        if snippet not in body_text:
+            missing_snippets.append(snippet)
+
+    if missing_snippets:
+        page.screenshot(
+            path="runtime/screenshots/tc005_expected_error_not_found.png"
+        )
+
+        raise Exception(
+            "Expected extra-column validation error was not found. "
+            f"Missing snippets: {missing_snippets}"
+        )
+
+    page.screenshot(
+        path="runtime/screenshots/tc005_extra_columns_error_displayed.png"
+    )
+
+    log(
+        "Expected extra-column validation error displayed"
+    )
+
+    close_ok_popup_if_present(page)
+
+
+def check_storage_error_after_upload(page):
+    if page.get_by_text(
+        "File not found in storage",
+        exact=False
+    ).count() > 0:
+
+        page.screenshot(
+            path="runtime/screenshots/tc005_file_not_found_in_storage.png"
+        )
+
+        raise Exception(
+            "File upload failed before extra-column validation: "
+            "File not found in storage"
+        )
+
 
 # --------------------------------------------------
 # Browser Launch
@@ -211,7 +224,12 @@ page.on(
 
 
 try:
-    log("Starting OTCT-7968_TC_002")
+    log("Starting OTCT-7968_TC_005")
+
+    if not os.path.exists(EXTRA_COLUMNS_FILE):
+        raise Exception(
+            f"Missing test data file: {EXTRA_COLUMNS_FILE}"
+        )
 
     # --------------------------------------------------
     # Login
@@ -221,6 +239,10 @@ try:
     login(page)
 
     page.wait_for_timeout(3000)
+
+    page.screenshot(
+        path="runtime/screenshots/tc005_after_login.png"
+    )
 
     # --------------------------------------------------
     # Navigate to Portfolio Transfer Entry
@@ -263,22 +285,24 @@ try:
     page.wait_for_timeout(2000)
 
     # --------------------------------------------------
-    # Upload CSV File
+    # Upload Extra Columns CSV File
     # --------------------------------------------------
 
-    log(
-        "Preparing to upload file with trailing space in filename"
-    )
+    log("Preparing to upload extra-columns file")
 
-    log(
-        "Uploading file with trailing space in filename"
-    )
+    log("Uploading extra-columns file")
 
     page.locator(
         PortfolioTransferLocators.FILE_UPLOAD
-    ).set_input_files(TRAILING_SPACE_FILE)
+    ).set_input_files(EXTRA_COLUMNS_FILE)
 
     page.wait_for_timeout(2000)
+
+    check_storage_error_after_upload(page)
+
+    page.screenshot(
+        path="runtime/screenshots/tc005_after_extra_columns_file_upload.png"
+    )
 
     # --------------------------------------------------
     # Transfer Type = Account Transfer
@@ -294,10 +318,10 @@ try:
 
     log("Selecting Account Transfer option")
 
-    select_dropdown_text(
-        page,
-        "Account Transfer"
-    )
+    page.get_by_text(
+        "Account Transfer",
+        exact=True
+    ).click()
 
     page.wait_for_timeout(2000)
 
@@ -308,11 +332,6 @@ try:
     log(
         f"Selected Transfer Type Value = "
         f"[{transfer_type_value}]"
-    )
-
-    page.screenshot(
-        path="runtime/screenshots/"
-        "after_transfer_type_selected.png"
     )
 
     # --------------------------------------------------
@@ -332,10 +351,7 @@ try:
 
     page.wait_for_timeout(1000)
 
-    # Try to commit GXT combo selection.
-    #page.keyboard.press("ArrowDown")
-    #page.wait_for_timeout(500)
-    page.keyboard.press("Enter")
+    book_field.press("Enter")
 
     page.wait_for_timeout(3000)
 
@@ -343,93 +359,54 @@ try:
         "#puBook input"
     ).input_value()
 
-    client_mw_before = page.locator(
+    client_mw = page.locator(
         "#puClientIdMw input"
     ).input_value()
 
-    client_other_before = page.locator(
+    client_other = page.locator(
         "#puClientIdOther input"
     ).input_value()
 
-    cm_mw_before = page.locator(
+    cm_mw = page.locator(
         "#puCmIdMw input"
     ).input_value()
 
-    cm_other_before = page.locator(
+    cm_other = page.locator(
         "#puCmIdOther input"
     ).input_value()
 
     log(f"BOOK=[{book_value}]")
-    log(f"CLIENT_MW_BEFORE=[{client_mw_before}]")
-    log(f"CLIENT_OTHER_BEFORE=[{client_other_before}]")
-    log(f"CM_MW_BEFORE=[{cm_mw_before}]")
-    log(f"CM_OTHER_BEFORE=[{cm_other_before}]")
-
-    log(
-        f"Selected Book Value = "
-        f"[{book_value}]"
-    )
-
-    page.screenshot(
-        path="runtime/screenshots/book_after_enter.png"
-    )
-
-    # --------------------------------------------------
-    # Source System IDs
-    # Matches Selenium baseline:
-    # setSourceSystemClientIds("clientIdMw", "clientIdOther")
-    # setSourceSystemCMIds("cmIdMw", "cmIdOther")
-    # --------------------------------------------------
-
-    log("Setting Source System Client IDs")
-    '''
-
-    client_mw = set_if_enabled(
-        page,
-        "#puClientIdMw input",
-        CLIENT_ID_MW,
-        "Source System Client ID MW"
-    )
-
-    client_other = set_if_enabled(
-        page,
-        "#puClientIdOther input",
-        CLIENT_ID_OTHER,
-        "Source System Client ID Other"
-    )
-
-    log("Setting Source System CM IDs")
-
-    cm_mw = set_if_enabled(
-        page,
-        "#puCmIdMw input",
-        CM_ID_MW,
-        "Source System CM ID MW"
-    )
-
-    cm_other = set_if_enabled(
-        page,
-        "#puCmIdOther input",
-        CM_ID_OTHER,
-        "Source System CM ID Other"
-    )
-    
-
     log(f"CLIENT_MW=[{client_mw}]")
     log(f"CLIENT_OTHER=[{client_other}]")
     log(f"CM_MW=[{cm_mw}]")
     log(f"CM_OTHER=[{cm_other}]")
-    '''
+
+    if book_value != TARGET_BOOK:
+        raise Exception(
+            f"Expected book [{TARGET_BOOK}], got [{book_value}]"
+        )
+
+    if not client_other:
+        raise Exception(
+            "Expected Client Other to be auto-populated"
+        )
+
+    if not cm_mw:
+        raise Exception(
+            "Expected CM MW to be auto-populated"
+        )
+
+    if not cm_other:
+        raise Exception(
+            "Expected CM Other to be auto-populated"
+        )
 
     page.screenshot(
-        path="runtime/screenshots/"
-        "source_system_ids_after_safe_set.png"
+        path="runtime/screenshots/tc005_after_book_auto_population.png"
     )
 
     # --------------------------------------------------
     # MTM Adjustment = Yes
-    # Matches Selenium baseline:
-    # portfolioEntry.setMtmAdjustment(true)
     # --------------------------------------------------
 
     log("Clicking on MTM Adjustment dropdown")
@@ -456,8 +433,7 @@ try:
     log(f"MTM Adjustment selected=[{mtm_value}]")
 
     page.screenshot(
-        path="runtime/screenshots/"
-        "after_mtm_yes_selection.png"
+        path="runtime/screenshots/tc005_after_mtm_yes_selection.png"
     )
 
     # --------------------------------------------------
@@ -476,66 +452,26 @@ try:
 
     wait_for_progress_bar_close(page)
 
-    page.wait_for_timeout(5000)
+    page.wait_for_timeout(3000)
 
     page.screenshot(
-        path="runtime/screenshots/"
-        "after_create_portfolio_transfer.png"
+        path="runtime/screenshots/tc005_after_create_click.png"
     )
 
     # --------------------------------------------------
-    # Error Popup Detection
+    # Validate Extra Column Header Error
     # --------------------------------------------------
 
-    if page.get_by_text(
-        "User does not exist [4004]"
-    ).count() > 0:
-
-        page.screenshot(
-            path="runtime/screenshots/user_not_exist_4004.png"
-        )
-
-        raise Exception(
-            "Application Error Popup: User does not exist [4004]"
-        )
-
-    # --------------------------------------------------
-    # Result Grid Validation
-    # --------------------------------------------------
-
-    log("Waiting for result grid row")
-
-    page.wait_for_function(
-        """
-        () => document.querySelectorAll(
-            '#puGrid tr.BlueGridAppearance-BlueGridStyle-row'
-        ).length > 0
-        """,
-        timeout=60000
+    assert_validation_error(
+        page,
+        EXPECTED_ERROR_SNIPPETS
     )
 
-    upload_status = page.locator(
-        PortfolioTransferLocators.UPLOAD_STATUS
-    ).first.inner_text().strip()
+    log(
+        "TC005 PASSED - Extra columns file was rejected "
+        "with expected validation error"
+    )
 
-    target_book = page.locator(
-        PortfolioTransferLocators.TARGET_BOOK_RESULT
-    ).first.inner_text().strip()
-
-    description = page.locator(
-        PortfolioTransferLocators.DESCRIPTION_RESULT
-    ).first.inner_text().strip()
-
-    log(f"Upload Status: {upload_status}")
-    log(f"Target Book: {target_book}")
-    log(f"Description: {description}")
-
-    # For trailing-space filename scenario, expected result may be FAILURE.
-    if upload_status != "FAILURE":
-        raise Exception(
-            f"Expected upload status: FAILURE, but got: {upload_status}"
-        )
-    log("TC002 PASSED - Upload failed as expected for file with trailing space in filename")
     logout(page)
 
 except Exception as e:
