@@ -31,12 +31,12 @@ BASE_URL = "https://10.130.209.10:8443/OTC_GUI/App.html"
 
 PASSWORD_RESET_USERNAME = os.getenv(
     "PASSWORD_RESET_USERNAME",
-    ""
+    "CBKFRCLR001"
 )
 
 PASSWORD_RESET_PASSWORD = os.getenv(
     "PASSWORD_RESET_PASSWORD",
-    ""
+    "CBKFRCLR001"
 )
 
 

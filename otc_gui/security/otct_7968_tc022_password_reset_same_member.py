@@ -1,4 +1,4 @@
-
+#This is on hold until further notice.  The test is failing due to a change in the OTC GUI that is not yet understood.  The test will be re-enabled once the issue is resolved. 
 import os
 
 from common.logout import logout
