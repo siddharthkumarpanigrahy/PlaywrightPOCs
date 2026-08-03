@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -26,11 +25,9 @@ pipeline {
 
         choice(
             name: 'PACK',
-            choices[
-OTC_GUI',
-MC_GUI',
-ALL'
-: 'Select          'SECURITY',
+            choices: [
+                'SMOKE',
+                'SECURITY',
                 'ALL'
             ],
             description: 'Select test pack'
@@ -64,7 +61,7 @@ ALL'
         RESET_TARGET_USER = 'DBKFRCLR001'
         RESET_TARGET_USER_DIFFERENT_MEMBER = 'DBKFRCLR001'
 
-        // Optional browser setting if your common.browser reads this
+        // Optional browser setting if common.browser reads this
         HEADLESS = "${params.HEADLESS}"
     }
 
@@ -126,7 +123,7 @@ ALL'
                     set -e
 
                     echo "======================================"
-                    echo "Running OTCT-7968 Test Runner"
+                    echo "Running Daily Playwright UI Test Runner"
                     echo "APPLICATION=${APPLICATION}"
                     echo "PACK=${PACK}"
                     echo "TEST_ID=${TEST_ID}"
@@ -135,6 +132,7 @@ ALL'
                     export APPLICATION="${APPLICATION}"
                     export PACK="${PACK}"
                     export TEST_ID="${TEST_ID}"
+                    export HEADLESS="${HEADLESS}"
 
                     python3 runner.py
                 '''
@@ -172,11 +170,11 @@ ALL'
         }
 
         success {
-            echo 'OTCT-7968 Jenkins execution completed successfully.'
+            echo 'Daily Playwright UI test execution completed successfully. Check console logs and archived screenshots for details.'
         }
 
         failure {
-            echo 'OTCT-7968 Jenkins execution failed. Check console logs and archived screenshots.'
+            echo 'Daily Playwright UI test execution failed. Check console logs and archived screenshots.'
         }
 
         cleanup {
