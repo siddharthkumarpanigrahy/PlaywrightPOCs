@@ -181,7 +181,7 @@ pipeline {
             Build URL:
             ${env.BUILD_URL}
             """,
-            attachmentsPattern: '*.txt,*.png',
+            
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
 
