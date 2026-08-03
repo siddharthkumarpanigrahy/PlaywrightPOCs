@@ -167,6 +167,22 @@ pipeline {
                 allowEmptyArchive: true,
                 fingerprint: false
             )
+
+            emailext(
+            subject: "OTC-GUI | Smoke Test | ${currentBuild.currentResult}",
+            body: """
+            OTC GUI Smoke Test Completed
+
+            Result:
+            ${currentBuild.currentResult}
+
+            Build URL:
+            ${env.BUILD_URL}
+            """,
+            attachmentsPattern: '*.txt,*.png',
+            to: 'siddharth.panigrahy@deutsche-boerse.com'
+        )
+        
         }
 
         success {
