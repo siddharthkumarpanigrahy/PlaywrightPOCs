@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'otc-smoke2-primary_otcci'
+    }
 
     options {
         timestamps()
@@ -182,7 +184,7 @@ pipeline {
             attachmentsPattern: '*.txt,*.png',
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
-        
+
         }
 
         success {
