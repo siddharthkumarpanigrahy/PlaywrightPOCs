@@ -98,12 +98,12 @@ pipeline {
                     set -e
 
                     python3 -m pip install --upgrade pip
-                    python3 -m pip install playwright
+                    pip3 install -r requirements.txt
+                    playwright install firefox
 
                     # Install Chromium browser for Playwright.
                     # If your Jenkins agent already has browser binaries,
                     # this command is still safe.
-                    python3 -m playwright install chromium
                 '''
             }
         }
