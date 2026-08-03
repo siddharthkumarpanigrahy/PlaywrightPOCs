@@ -247,6 +247,7 @@ try:
 except Exception as e:
 
     log(f"TEST FAILED: {e}")
+    raise
 
 finally:
 

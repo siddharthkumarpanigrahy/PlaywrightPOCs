@@ -52,6 +52,7 @@ try:
 except Exception as e:
 
     result = f"FAILED - {e}"
+    raise
 
 finally:
 
