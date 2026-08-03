@@ -171,9 +171,9 @@ pipeline {
             )
 
             emailext(
-            subject: "OTC-GUI | Smoke Test | ${currentBuild.currentResult}",
+            subject: "Playwright | Daily UI Test Execution | ${currentBuild.currentResult}",
             body: """
-            OTC GUI Smoke Test Completed
+            Daily Playwright UI Test Execution Completed
 
             Result:
             ${currentBuild.currentResult}
