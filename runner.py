@@ -1,10 +1,10 @@
-
-
 import os
 import subprocess
 import sys
+from datetime import datetime
 
 from common.logger import log
+from common.html_report import generate_html_report
 
 
 # --------------------------------------------------
@@ -21,6 +21,7 @@ OTC_GUI_SMOKE_TESTS = [
 
 # --------------------------------------------------
 # Test Registry - OTC GUI Security
+# Based on current otc_gui/security folder.
 # --------------------------------------------------
 
 OTC_GUI_SECURITY_TESTS = [
@@ -30,7 +31,7 @@ OTC_GUI_SECURITY_TESTS = [
     },
     {
         "id": "OTCT-7968_TC_002",
-        "module": "otc_gui.security.otct_7968_tc002_trailing_space_filename"
+        "module": "otc_gui.security.otct_7968_tc002_filename_spaces"
     },
     {
         "id": "OTCT-7968_TC_003",
@@ -69,18 +70,74 @@ OTC_GUI_SECURITY_TESTS = [
         "module": "otc_gui.security.otct_7968_tc011_readonly_upload_restriction"
     },
     {
-        "id": "OTCT-7968_TC_026",
-        "module": "otc_gui.security.otct_7968_tc026_password_reset_different_member"
+        "id": "OTCT-7968_TC_012",
+        "module": "otc_gui.security.otct_7968_tc012_duplicate_trade_ids_spaces"
     },
     {
-        "id": "OTCT-7968_TC_027",
-        "module": "otc_gui.security.otct_7968_tc027_rem_user_password_reset_restriction"
+        "id": "OTCT-7968_TC_013",
+        "module": "otc_gui.security.otct_7968_tc013_password_field_masking"
     },
     {
-        "id": "OTCT-7968_TC_030",
-        "module": "otc_gui.security.otct_7968_tc030_generated_password_policy"
+        "id": "OTCT-7968_TC_014",
+        "module": "otc_gui.security.otct_7968_tc014_password_confirm_mismatch"
+    },
+    {
+        "id": "OTCT-7968_TC_015",
+        "module": "otc_gui.security.otct_7968_tc015_password_complexity"
+    },
+    {
+        "id": "OTCT-7968_TC_016",
+        "module": "otc_gui.security.otct_7968_tc016_password_reset_button_visible"
+    },
+    {
+        "id": "OTCT-7968_TC_017",
+        "module": "otc_gui.security.otct_7968_tc017_password_reset_button_hidden"
+    },
+    {
+        "id": "OTCT-7968_TC_018",
+        "module": "otc_gui.security.otct_7968_tc018_50k_trade_ids"
+    },
+    {
+        "id": "OTCT-7968_TC_019",
+        "module": "otc_gui.security.otct_7968_tc019_49999_trade_ids"
+    },
+    {
+        "id": "OTCT-7968_TC_020",
+        "module": "otc_gui.security.otct_7968_tc020_extremely_large_csv_stability"
+    },
+    {
+        "id": "OTCT-7968_TC_021",
+        "module": "otc_gui.security.otct_7968_tc021_generated_password_policy"
+    },
+    {
+        "id": "OTCT-7968_TC_022",
+        "module": "otc_gui.security.otct_7968_tc022_password_reset_same_member"
+    },
+    {
+        "id": "OTCT-7968_TC_023",
+        "module": "otc_gui.security.otct_7968_tc023_password_reset_different_member"
+    },
+    {
+        "id": "OTCT-7968_TC_024",
+        "module": "otc_gui.security.otct_7968_tc024_password_reset_rem_user"
     }
 ]
+
+
+# --------------------------------------------------
+# Test Registry - OTC GUI Regression
+# Add tests here when implemented.
+# --------------------------------------------------
+
+OTC_GUI_REGRESSION_TESTS = []
+
+
+# --------------------------------------------------
+# Test Registry - MC GUI Smoke
+# Add tests here when implemented.
+# --------------------------------------------------
+
+MC_GUI_SMOKE_TESTS = []
 
 
 # --------------------------------------------------
@@ -128,16 +185,189 @@ MC_GUI_SECURITY_TESTS = [
 
 
 # --------------------------------------------------
+# Test Registry - MC GUI Regression
+# Add tests here when implemented.
+# --------------------------------------------------
+
+MC_GUI_REGRESSION_TESTS = []
+
+
+# --------------------------------------------------
+# Registry Map
+# --------------------------------------------------
+
+TEST_REGISTRY = {
+    "OTC_GUI": {
+        "SMOKE": OTC_GUI_SMOKE_TESTS,
+        "SECURITY": OTC_GUI_SECURITY_TESTS,
+        "REGRESSION": OTC_GUI_REGRESSION_TESTS
+    },
+    "MC_GUI": {
+        "SMOKE": MC_GUI_SMOKE_TESTS,
+        "SECURITY": MC_GUI_SECURITY_TESTS,
+        "REGRESSION": MC_GUI_REGRESSION_TESTS
+    }
+}
+
+
+VALID_APPLICATIONS = [
+    "OTC_GUI",
+    "MC_GUI"
+]
+
+VALID_PACKS = [
+    "SMOKE",
+    "SECURITY",
+    "REGRESSION"
+]
+
+
+# --------------------------------------------------
+# Utility Helpers
+# --------------------------------------------------
+
+def current_time():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def parse_csv_env(value, default_value):
+    if not value:
+        value = default_value
+
+    value = value.strip()
+
+    if not value:
+        return []
+
+    return [
+        item.strip().upper()
+        for item in value.split(",")
+        if item.strip()
+    ]
+
+
+def parse_test_ids(value):
+    if not value:
+        return []
+
+    return [
+        item.strip()
+        for item in value.split(",")
+        if item.strip()
+    ]
+
+
+def remove_duplicates_preserve_order(values):
+    seen = set()
+    result = []
+
+    for value in values:
+        if value not in seen:
+            result.append(value)
+            seen.add(value)
+
+    return result
+
+
+def expand_applications(application_values):
+    expanded = []
+
+    for application in application_values:
+        if application == "ALL":
+            expanded.extend(VALID_APPLICATIONS)
+        elif application in VALID_APPLICATIONS:
+            expanded.append(application)
+        else:
+            raise Exception(
+                f"Unsupported APPLICATION value: [{application}]"
+            )
+
+    return remove_duplicates_preserve_order(expanded)
+
+
+def expand_packs(pack_values):
+    expanded = []
+
+    for pack in pack_values:
+        if pack == "ALL":
+            expanded.extend(VALID_PACKS)
+        elif pack in VALID_PACKS:
+            expanded.append(pack)
+        else:
+            raise Exception(
+                f"Unsupported PACK value: [{pack}]"
+            )
+
+    return remove_duplicates_preserve_order(expanded)
+
+
+def build_execution_plan(applications, packs, test_ids):
+    execution_plan = []
+
+    for application in applications:
+        for pack in packs:
+            test_list = TEST_REGISTRY.get(
+                application,
+                {}
+            ).get(
+                pack,
+                []
+            )
+
+            pack_name = f"{application}_{pack}"
+
+            if not test_list:
+                log(
+                    f"Pack [{pack_name}] is not implemented or has no tests. "
+                    "Skipping."
+                )
+                continue
+
+            selected_tests = test_list
+
+            if test_ids:
+                selected_tests = [
+                    test
+                    for test in test_list
+                    if test["id"] in test_ids
+                ]
+
+                if not selected_tests:
+                    log(
+                        f"No matching TEST_ID found in pack [{pack_name}]. "
+                        f"Requested TEST_ID values={test_ids}. Skipping."
+                    )
+                    continue
+
+            for test in selected_tests:
+                execution_plan.append(
+                    {
+                        "application": application,
+                        "pack": pack,
+                        "pack_name": pack_name,
+                        "id": test["id"],
+                        "module": test["module"]
+                    }
+                )
+
+    return execution_plan
+
+
+# --------------------------------------------------
 # Core Execution Helper
 # --------------------------------------------------
 
 def run_test_module(test):
     test_id = test["id"]
     module = test["module"]
+    application = test["application"]
+    pack = test["pack"]
 
     log("=" * 80)
     log(f"STARTING TEST [{test_id}]")
+    log(f"APPLICATION=[{application}] PACK=[{pack}]")
     log(f"MODULE=[{module}]")
+    log(f"START_TIME=[{current_time()}]")
     log("=" * 80)
 
     subprocess.run(
@@ -151,153 +381,116 @@ def run_test_module(test):
 
     log("=" * 80)
     log(f"COMPLETED TEST [{test_id}]")
+    log(f"END_TIME=[{current_time()}]")
     log("=" * 80)
 
 
-def run_test_pack(pack_name, test_list, test_id=None):
-    log(f"Executing Pack=[{pack_name}]")
+def execute_plan(execution_plan, stop_on_fail):
+    results = []
+    total = len(execution_plan)
 
-    selected_tests = test_list
+    log(f"Total tests selected=[{total}]")
 
-    if test_id:
-        selected_tests = [
-            test
-            for test in test_list
-            if test["id"] == test_id
-        ]
+    for index, test in enumerate(execution_plan, start=1):
+        test_id = test["id"]
+        module = test["module"]
+        application = test["application"]
+        pack = test["pack"]
 
-        if not selected_tests:
-            raise Exception(
-                f"TEST_ID=[{test_id}] was not found in pack [{pack_name}]"
-            )
-
-    log(f"Total tests selected=[{len(selected_tests)}]")
-
-    for index, test in enumerate(selected_tests, start=1):
         log(
-            f"Executing test [{index}/{len(selected_tests)}] "
-            f"ID=[{test['id']}]"
+            f"Executing test [{index}/{total}] "
+            f"APPLICATION=[{application}] PACK=[{pack}] "
+            f"ID=[{test_id}]"
         )
 
-        run_test_module(test)
+        try:
+            run_test_module(test)
 
-
-# --------------------------------------------------
-# Application Pack Functions
-# --------------------------------------------------
-
-def run_otc_smoke(test_id=None):
-    run_test_pack(
-        "OTC_GUI_SMOKE",
-        OTC_GUI_SMOKE_TESTS,
-        test_id=test_id
-    )
-
-
-def run_otc_security(test_id=None):
-    run_test_pack(
-        "OTC_GUI_SECURITY",
-        OTC_GUI_SECURITY_TESTS,
-        test_id=test_id
-    )
-
-
-def run_otc_all(test_id=None):
-    log("Executing OTC GUI ALL Pack...")
-
-    run_otc_smoke(test_id=test_id)
-    run_otc_security(test_id=test_id)
-
-
-def run_mc_security(test_id=None):
-    run_test_pack(
-        "MC_GUI_SECURITY",
-        MC_GUI_SECURITY_TESTS,
-        test_id=test_id
-    )
-
-
-def run_mc_all(test_id=None):
-    log("Executing MC GUI ALL Pack...")
-
-    # Currently MC_GUI has only SECURITY configured.
-    # Add MC_GUI_SMOKE here later if needed.
-    run_mc_security(test_id=test_id)
-
-
-def run_all_security(test_id=None):
-    log("Executing ALL SECURITY Packs...")
-
-    if test_id:
-        matching_tests = []
-
-        matching_tests.extend(
-            [
-                test
-                for test in OTC_GUI_SECURITY_TESTS
-                if test["id"] == test_id
-            ]
-        )
-
-        matching_tests.extend(
-            [
-                test
-                for test in MC_GUI_SECURITY_TESTS
-                if test["id"] == test_id
-            ]
-        )
-
-        if not matching_tests:
-            raise Exception(
-                f"TEST_ID=[{test_id}] was not found in any SECURITY pack"
+            results.append(
+                {
+                    "application": application,
+                    "pack": pack,
+                    "id": test_id,
+                    "module": module,
+                    "status": "PASSED"
+                }
             )
 
-        run_test_pack(
-            "ALL_SECURITY_FILTERED",
-            matching_tests
-        )
-
-        return
-
-    run_otc_security()
-    run_mc_security()
-
-
-def run_all_all(test_id=None):
-    log("Executing APPLICATION=ALL PACK=ALL...")
-
-    if test_id:
-        matching_tests = []
-
-        all_registered_tests = (
-            OTC_GUI_SMOKE_TESTS +
-            OTC_GUI_SECURITY_TESTS +
-            MC_GUI_SECURITY_TESTS
-        )
-
-        matching_tests.extend(
-            [
-                test
-                for test in all_registered_tests
-                if test["id"] == test_id
-            ]
-        )
-
-        if not matching_tests:
-            raise Exception(
-                f"TEST_ID=[{test_id}] was not found in any registered pack"
+        except subprocess.CalledProcessError as error:
+            log(
+                f"TEST FAILED: APPLICATION=[{application}] "
+                f"PACK=[{pack}] ID=[{test_id}] "
+                f"MODULE=[{module}] EXIT_CODE=[{error.returncode}]"
             )
 
-        run_test_pack(
-            "ALL_ALL_FILTERED",
-            matching_tests
-        )
+            results.append(
+                {
+                    "application": application,
+                    "pack": pack,
+                    "id": test_id,
+                    "module": module,
+                    "status": "FAILED",
+                    "exit_code": error.returncode
+                }
+            )
 
-        return
+            if stop_on_fail:
+                log("STOP_ON_FAIL is enabled. Stopping execution.")
+                break
 
-    run_otc_smoke()
-    run_otc_security()
-    run_mc_security()
+    return results
+
+
+def write_summary(results):
+    os.makedirs(
+        "runtime/reports",
+        exist_ok=True
+    )
+
+    summary_file = "runtime/reports/runner_summary.txt"
+
+    total = len(results)
+
+    passed = len(
+        [
+            result
+            for result in results
+            if result["status"] == "PASSED"
+        ]
+    )
+
+    failed = total - passed
+
+    with open(
+        summary_file,
+        "w",
+        encoding="utf-8"
+    ) as report:
+        report.write("Runner Summary\n")
+        report.write("=" * 80 + "\n")
+        report.write(f"Generated At : {current_time()}\n")
+        report.write(f"Total        : {total}\n")
+        report.write(f"Passed       : {passed}\n")
+        report.write(f"Failed       : {failed}\n")
+        report.write("\n")
+
+        for result in results:
+            report.write(
+                f"{result['application']} | "
+                f"{result['pack']} | "
+                f"{result['id']} | "
+                f"{result['status']} | "
+                f"{result['module']}\n"
+            )
+
+    log("=" * 80)
+    log("RUNNER SUMMARY")
+    log("=" * 80)
+    log(f"Total=[{total}] Passed=[{passed}] Failed=[{failed}]")
+    log(f"Summary file=[{summary_file}]")
+    log("=" * 80)
+
+    return failed
 
 
 # --------------------------------------------------
@@ -306,67 +499,116 @@ def run_all_all(test_id=None):
 
 if __name__ == "__main__":
 
-    application = os.getenv(
+    raw_application = os.getenv(
         "APPLICATION",
         "OTC_GUI"
-    ).upper()
+    )
 
-    pack = os.getenv(
+    raw_pack = os.getenv(
         "PACK",
         "SMOKE"
-    ).upper()
+    )
 
-    test_id = os.getenv(
+    raw_test_id = os.getenv(
         "TEST_ID",
         ""
-    ).strip()
+    )
 
-    log(f"APPLICATION=[{application}] PACK=[{pack}] TEST_ID=[{test_id}]")
+    stop_on_fail_raw = os.getenv(
+        "STOP_ON_FAIL",
+        "false"
+    ).lower()
+
+    stop_on_fail = stop_on_fail_raw in [
+        "true",
+        "1",
+        "yes",
+        "y"
+    ]
+
+    log(
+        f"APPLICATION=[{raw_application}] "
+        f"PACK=[{raw_pack}] "
+        f"TEST_ID=[{raw_test_id}] "
+        f"STOP_ON_FAIL=[{stop_on_fail}]"
+    )
 
     try:
-        if application == "OTC_GUI" and pack == "SMOKE":
-            run_otc_smoke(
-                test_id=test_id or None
-            )
+        application_values = parse_csv_env(
+            raw_application,
+            "OTC_GUI"
+        )
 
-        elif application == "OTC_GUI" and pack == "SECURITY":
-            run_otc_security(
-                test_id=test_id or None
-            )
+        pack_values = parse_csv_env(
+            raw_pack,
+            "SMOKE"
+        )
 
-        elif application == "OTC_GUI" and pack == "ALL":
-            run_otc_all(
-                test_id=test_id or None
-            )
+        test_ids = parse_test_ids(
+            raw_test_id
+        )
 
-        elif application == "MC_GUI" and pack == "SECURITY":
-            run_mc_security(
-                test_id=test_id or None
-            )
+        applications = expand_applications(
+            application_values
+        )
 
-        elif application == "MC_GUI" and pack == "ALL":
-            run_mc_all(
-                test_id=test_id or None
-            )
+        packs = expand_packs(
+            pack_values
+        )
 
-        elif application == "ALL" and pack == "SECURITY":
-            run_all_security(
-                test_id=test_id or None
-            )
+        log(f"Resolved applications={applications}")
+        log(f"Resolved packs={packs}")
+        log(f"Resolved test_ids={test_ids}")
 
-        elif application == "ALL" and pack == "ALL":
-            run_all_all(
-                test_id=test_id or None
-            )
+        execution_plan = build_execution_plan(
+            applications,
+            packs,
+            test_ids
+        )
 
-        else:
+        if not execution_plan:
             raise Exception(
-                f"No runner configured for APPLICATION=[{application}] "
-                f"PACK=[{pack}]"
+                "No tests selected for execution. "
+                "Check APPLICATION, PACK, and TEST_ID parameters."
             )
+
+        results = execute_plan(
+            execution_plan,
+            stop_on_fail
+        )
+
+        failed_count = write_summary(
+            results
+        )
+
+        screenshot_report = generate_html_report()
+
+        log(
+            f"Screenshot HTML report generated=[{screenshot_report}]"
+        )
+
+        if failed_count > 0:
+            log(
+                f"Runner completed with failures. "
+                f"Failed count=[{failed_count}]"
+            )
+            sys.exit(1)
 
         log("Runner completed successfully")
+        sys.exit(0)
 
     except Exception as error:
         log(f"Runner failed: {error}")
+
+        try:
+            screenshot_report = generate_html_report()
+            log(
+                f"Screenshot HTML report generated after failure="
+                f"[{screenshot_report}]"
+            )
+        except Exception as report_error:
+            log(
+                f"Failed to generate screenshot HTML report: {report_error}"
+            )
+
         sys.exit(1)

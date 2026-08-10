@@ -143,61 +143,100 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            echo 'Archiving runtime artifacts...'
+post {
+    always {
+        echo 'Preparing single HTML screenshot report attachment...'
 
-            archiveArtifacts(
-                artifacts: 'runtime/screenshots/**/*.png',
-                allowEmptyArchive: true,
-                fingerprint: true
-            )
+        sh '''
+            mkdir -p runtime/email_attachments
+            rm -f runtime/email_attachments/*
 
-            archiveArtifacts(
-                artifacts: 'runtime/logs/**/*.log',
-                allowEmptyArchive: true,
-                fingerprint: true
-            )
+            if [ -f runtime/reports/screenshot_report.html ]; then
+                cp runtime/reports/screenshot_report.html runtime/email_attachments/
+                echo "Attached screenshot HTML report"
+            else
+                echo "screenshot_report.html not found. Selecting latest artifact instead."
 
-            archiveArtifacts(
-                artifacts: 'runtime/reports/**/*',
-                allowEmptyArchive: true,
-                fingerprint: true
-            )
+                LATEST_FILE=$(find runtime/screenshots runtime/logs runtime/reports -type f \
+                    \\( -name "*.png" -o -name "*.log" -o -name "*.txt" -o -name "*.json" -o -name "*.html" \\) \
+                    -printf "%T@ %p\\n" 2>/dev/null \
+                    | sort -nr \
+                    | head -1 \
+                    | cut -d " " -f2-)
 
-            archiveArtifacts(
-                artifacts: 'test_data/**/*.csv',
-                allowEmptyArchive: true,
-                fingerprint: false
-            )
+                if [ -n "$LATEST_FILE" ]; then
+                    echo "Latest attachment selected: $LATEST_FILE"
+                    cp "$LATEST_FILE" runtime/email_attachments/
+                else
+                    echo "No artifact found for email attachment"
+                fi
+            fi
 
-            emailext(
-            subject: "Playwright | Daily UI Test Execution | ${currentBuild.currentResult}",
-            body: """
-            Daily Playwright UI Test Execution Completed
+            ls -l runtime/email_attachments || true
+        '''
 
-            Result:
-            ${currentBuild.currentResult}
-
-            Build URL:
-            ${env.BUILD_URL}
-            """,
-            
-            to: 'siddharth.panigrahy@deutsche-boerse.com'
+        archiveArtifacts(
+            artifacts: 'runtime/screenshots/**/*.png',
+            allowEmptyArchive: true,
+            fingerprint: true
         )
 
-        }
+        archiveArtifacts(
+            artifacts: 'runtime/logs/**/*.log',
+            allowEmptyArchive: true,
+            fingerprint: true
+        )
 
-        success {
-            echo 'Daily Playwright UI test execution completed successfully. Check console logs and archived screenshots for details.'
-        }
+        archiveArtifacts(
+            artifacts: 'runtime/reports/**/*',
+            allowEmptyArchive: true,
+            fingerprint: true
+        )
 
-        failure {
-            echo 'Daily Playwright UI test execution failed. Check console logs and archived screenshots.'
-        }
+        archiveArtifacts(
+            artifacts: 'runtime/email_attachments/*',
+            allowEmptyArchive: true,
+            fingerprint: true
+        )
 
-        cleanup {
-            echo 'Pipeline cleanup completed.'
-        }
+        emailext(
+            subject: "Playwright | Daily UI Test Execution | ${currentBuild.currentResult}",
+            body: """
+Daily Playwright UI Test Execution Completed
+
+Result:
+${currentBuild.currentResult}
+
+Application:
+${params.APPLICATION}
+
+Pack:
+${params.PACK}
+
+Test ID:
+${params.TEST_ID}
+
+Node:
+${env.NODE_NAME}
+
+Build URL:
+${env.BUILD_URL}
+            """,
+            attachmentsPattern: 'runtime/email_attachments/*',
+            to: 'siddharth.panigrahy@deutsche-boerse.com'
+        )
     }
+
+    success {
+        echo 'Daily Playwright UI test execution completed successfully. Check console logs and archived screenshots for details.'
+    }
+
+    failure {
+        echo 'Daily Playwright UI test execution failed. Check console logs and archived screenshots.'
+    }
+
+    cleanup {
+        echo 'Pipeline cleanup completed.'
+    }
+}
 }
