@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import json
 from datetime import datetime
 
 from common.logger import log
@@ -404,18 +405,26 @@ def execute_plan(execution_plan, stop_on_fail):
         )
 
         try:
+            start_time = datetime.now()
+
             run_test_module(test)
 
-            results.append(
-                {
-                    "application": application,
-                    "pack": pack,
-                    "id": test_id,
-                    "module": module,
-                    "status": "PASSED"
-                }
+            end_time = datetime.now()
+            duration_seconds = round(
+                (end_time - start_time).total_seconds(),
+                2
             )
 
+            results.append(
+            {
+            "application": application,
+            "pack": pack,
+            "id": test_id,
+            "module": module,
+            "status": "PASSED",
+            "duration_seconds": duration_seconds
+            }
+         )
         except subprocess.CalledProcessError as error:
             log(
                 f"TEST FAILED: APPLICATION=[{application}] "
@@ -423,17 +432,23 @@ def execute_plan(execution_plan, stop_on_fail):
                 f"MODULE=[{module}] EXIT_CODE=[{error.returncode}]"
             )
 
-            results.append(
-                {
-                    "application": application,
-                    "pack": pack,
-                    "id": test_id,
-                    "module": module,
-                    "status": "FAILED",
-                    "exit_code": error.returncode
-                }
-            )
+            end_time = datetime.now()
+            duration_seconds = round(
+                    (end_time - start_time).total_seconds(),
+                    2
+                )
 
+            results.append(
+                    {
+                        "application": application,
+                        "pack": pack,
+                        "id": test_id,
+                        "module": module,
+                        "status": "FAILED",
+                        "exit_code": error.returncode,
+                        "duration_seconds": duration_seconds
+                    }
+                )
             if stop_on_fail:
                 log("STOP_ON_FAIL is enabled. Stopping execution.")
                 break
@@ -448,6 +463,7 @@ def write_summary(results):
     )
 
     summary_file = "runtime/reports/runner_summary.txt"
+    json_file = "runtime/reports/runner_results.json"
 
     total = len(results)
 
@@ -461,6 +477,25 @@ def write_summary(results):
 
     failed = total - passed
 
+    summary_data = {
+        "generated_at": current_time(),
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "results": results
+    }
+
+    with open(
+        json_file,
+        "w",
+        encoding="utf-8"
+    ) as json_report:
+        json.dump(
+            summary_data,
+            json_report,
+            indent=2
+        )
+
     with open(
         summary_file,
         "w",
@@ -468,7 +503,7 @@ def write_summary(results):
     ) as report:
         report.write("Runner Summary\n")
         report.write("=" * 80 + "\n")
-        report.write(f"Generated At : {current_time()}\n")
+        report.write(f"Generated At : {summary_data['generated_at']}\n")
         report.write(f"Total        : {total}\n")
         report.write(f"Passed       : {passed}\n")
         report.write(f"Failed       : {failed}\n")
@@ -488,11 +523,10 @@ def write_summary(results):
     log("=" * 80)
     log(f"Total=[{total}] Passed=[{passed}] Failed=[{failed}]")
     log(f"Summary file=[{summary_file}]")
+    log(f"JSON file=[{json_file}]")
     log("=" * 80)
 
     return failed
-
-
 # --------------------------------------------------
 # Main
 # --------------------------------------------------
