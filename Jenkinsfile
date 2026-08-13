@@ -15,43 +15,46 @@ pipeline {
     }
 
     parameters {
-        choice(
-            name: 'APPLICATION',
-            choices: [
-                'OTC_GUI',
-                'MC_GUI',
-                'ALL'
-            ],
-            description: 'Select application test suite'
-        )
+    string(
+        name: 'APPLICATION',
+        defaultValue: 'ALL',
+        description: 'Application(s): OTC_GUI, MC_GUI, or ALL. Multiple allowed: OTC_GUI,MC_GUI'
+    )
 
-        choice(
-            name: 'PACK',
-            choices: [
-                'SMOKE',
-                'SECURITY',
-                'ALL'
-            ],
-            description: 'Select test pack'
-        )
+    string(
+        name: 'PACK',
+        defaultValue: 'ALL',
+        description: 'Pack(s): SMOKE, SECURITY, REGRESSION, or ALL. Multiple allowed: SMOKE,SECURITY'
+    )
 
-        string(
-            name: 'TEST_ID',
-            defaultValue: '',
-            description: 'Optional specific test ID, for example OTCT-7968_TC_004'
-        )
+    string(
+        name: 'TEST_ID',
+        defaultValue: '',
+        description: 'Optional test ID(s), comma-separated, e.g. OTCT-7968_TC_004,OTCT-7968_TC_005'
+    )
 
-        booleanParam(
-            name: 'HEADLESS',
-            defaultValue: true,
-            description: 'Run browser in headless mode if supported by common.browser'
-        )
-    }
+    booleanParam(
+        name: 'STOP_ON_FAIL',
+        defaultValue: false,
+        description: 'Stop execution after first failed test'
+    )
+
+    booleanParam(
+        name: 'HEADLESS',
+        defaultValue: true,
+        description: 'Run browser in headless mode if supported by common.browser'
+    )
+}
 
     environment {
         // Common network/proxy bypass
         NO_PROXY = '10.130.209.10'
         no_proxy = '10.130.209.10'
+
+        // OTC-GUI credentials
+        OTC_USERNAME = 'CBKFRCLR001'
+        OTC_PASSWORD = 'CBKFRCLR001'
+        OTC_GUI_URL = 'https://10.130.209.10:8443/OTC_GUI/App.html'
 
         // MC-GUI credentials
         MC_USERNAME = 'CBKFRCLR001'
@@ -65,6 +68,7 @@ pipeline {
 
         // Optional browser setting if common.browser reads this
         HEADLESS = "${params.HEADLESS}"
+        STOP_ON_FAIL = "${params.STOP_ON_FAIL}"
     }
 
     stages {
@@ -130,11 +134,14 @@ pipeline {
                     echo "APPLICATION=${APPLICATION}"
                     echo "PACK=${PACK}"
                     echo "TEST_ID=${TEST_ID}"
+                    echo "STOP_ON_FAIL=${STOP_ON_FAIL}"
+                    echo "HEADLESS=${HEADLESS}"
                     echo "======================================"
 
                     export APPLICATION="${APPLICATION}"
                     export PACK="${PACK}"
                     export TEST_ID="${TEST_ID}"
+                    export STOP_ON_FAIL="${STOP_ON_FAIL}"
                     export HEADLESS="${HEADLESS}"
 
                     python3 runner.py
