@@ -329,7 +329,7 @@ def write_html(grouped, total_screenshots):
 <html>
 <head>
     <meta charset="utf-8">
-    <title>OTCT-7968 Screenshot Report</title>
+    <title>Playwright UI Automation Report</title>
     <style>
         body {
             font-family: Arial, sans-serif;
