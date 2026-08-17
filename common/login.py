@@ -22,7 +22,7 @@ def login(page: Page):
         OTC_GUI_URL,
         wait_until="domcontentloaded"
     )
-
+    log(f"Opening URL: {OTC_GUI_URL}")
     log(f"Page Loaded: {page.title()}")
 
     page.locator(
