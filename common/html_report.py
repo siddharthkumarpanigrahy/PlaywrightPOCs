@@ -1,10 +1,13 @@
-import os
+import json
+import base64
 import html
+import os
 from datetime import datetime
 
 
 SCREENSHOT_ROOT = "runtime/screenshots"
 REPORT_DIR = "runtime/reports"
+RESULTS_JSON = "runtime/reports/runner_results.json"
 REPORT_FILE = "runtime/reports/screenshot_report.html"
 
 
@@ -67,7 +70,7 @@ OTC_TEST_METADATA = {
     "012": {
         "id": "OTCT-7968_TC_012",
         "module": "Duplicate Record Injection",
-        "name": "Duplicate Trade IDs with spaces"
+        "name": "Duplicate Trade IDs with leading/trailing spaces"
     },
     "013": {
         "id": "OTCT-7968_TC_013",
@@ -77,7 +80,7 @@ OTC_TEST_METADATA = {
     "014": {
         "id": "OTCT-7968_TC_014",
         "module": "Password Reset Functionality",
-        "name": "Password confirm mismatch"
+        "name": "Password and confirm password mismatch"
     },
     "015": {
         "id": "OTCT-7968_TC_015",
@@ -181,16 +184,40 @@ MC_TEST_METADATA = {
 }
 
 
+def load_results():
+    if not os.path.exists(RESULTS_JSON):
+        return {}
+
+    with open(RESULTS_JSON, "r", encoding="utf-8") as result_file:
+        data = json.load(result_file)
+
+    result_map = {}
+
+    for result in data.get("results", []):
+        key = (
+            result.get("application", ""),
+            result.get("id", "")
+        )
+
+        result_map[key] = result
+
+    return result_map
+
+
 def extract_tc_number(file_name):
     lower_name = file_name.lower()
 
     if lower_name.startswith("mc_tc"):
-        prefix = lower_name.split("_")[1]
-        return prefix.replace("tc", "").zfill(3)
+        parts = lower_name.split("_")
+
+        if len(parts) >= 2:
+            return parts[1].replace("tc", "").zfill(3)
 
     if lower_name.startswith("tc"):
-        prefix = lower_name.split("_")[0]
-        return prefix.replace("tc", "").zfill(3)
+        parts = lower_name.split("_")
+
+        if parts:
+            return parts[0].replace("tc", "").zfill(3)
 
     return "000"
 
@@ -199,22 +226,32 @@ def infer_application(file_name):
     lower_name = file_name.lower()
 
     if lower_name.startswith("mc_tc"):
+        return "MC_GUI"
+
+    return "OTC_GUI"
+
+
+def display_application(application):
+    if application == "MC_GUI":
         return "MC-GUI"
 
-    return "OTC-GUI"
+    if application == "OTC_GUI":
+        return "OTC-GUI"
+
+    return application
 
 
 def infer_metadata(file_name):
     application = infer_application(file_name)
     tc_number = extract_tc_number(file_name)
 
-    if application == "MC-GUI":
+    if application == "MC_GUI":
         metadata = MC_TEST_METADATA.get(
             tc_number,
             {
                 "id": f"OTCT-7968_TC_{tc_number}",
                 "module": "Unmapped",
-                "name": "Unmapped MC-GUI Test"
+                "name": "Unmapped MC-GUI test"
             }
         )
     else:
@@ -223,7 +260,7 @@ def infer_metadata(file_name):
             {
                 "id": f"OTCT-7968_TC_{tc_number}",
                 "module": "Unmapped",
-                "name": "Unmapped OTC-GUI Test"
+                "name": "Unmapped OTC-GUI test"
             }
         )
 
@@ -232,18 +269,24 @@ def infer_metadata(file_name):
 
 def get_step_name(file_name):
     name_without_extension = os.path.splitext(file_name)[0]
-
     lower_name = name_without_extension.lower()
 
     if lower_name.startswith("mc_tc"):
         parts = name_without_extension.split("_")
-        return "_".join(parts[2:]) if len(parts) > 2 else name_without_extension
+        return " ".join(parts[2:]).strip()
 
     if lower_name.startswith("tc"):
         parts = name_without_extension.split("_")
-        return "_".join(parts[1:]) if len(parts) > 1 else name_without_extension
+        return " ".join(parts[1:]).strip()
 
     return name_without_extension
+
+
+def encode_image_base64(path):
+    with open(path, "rb") as image_file:
+        encoded = base64.b64encode(image_file.read()).decode("utf-8")
+
+    return f"data:image/png;base64,{encoded}"
 
 
 def collect_screenshots():
@@ -259,11 +302,6 @@ def collect_screenshots():
 
             absolute_path = os.path.join(root, file_name)
 
-            relative_path = os.path.relpath(
-                absolute_path,
-                REPORT_DIR
-            ).replace("\\", "/")
-
             application, module, test_case_id, test_case_name = infer_metadata(
                 file_name
             )
@@ -272,8 +310,8 @@ def collect_screenshots():
                 {
                     "file_name": file_name,
                     "absolute_path": absolute_path,
-                    "relative_path": relative_path,
                     "application": application,
+                    "application_display": display_application(application),
                     "module": module,
                     "test_case_id": test_case_id,
                     "test_case_name": test_case_name,
@@ -302,24 +340,105 @@ def group_screenshots(screenshots):
         module = screenshot["module"]
         test_case_id = screenshot["test_case_id"]
 
-        grouped.setdefault(application, {})
-        grouped[application].setdefault(module, {})
-        grouped[application][module].setdefault(test_case_id, {
-            "name": screenshot["test_case_name"],
-            "screenshots": []
-        })
+        grouped.setdefault(
+            application,
+            {
+                "display": screenshot["application_display"],
+                "modules": {}
+            }
+        )
 
-        grouped[application][module][test_case_id]["screenshots"].append(
+        grouped[application]["modules"].setdefault(module, {})
+        grouped[application]["modules"][module].setdefault(
+            test_case_id,
+            {
+                "name": screenshot["test_case_name"],
+                "screenshots": []
+            }
+        )
+
+        grouped[application]["modules"][module][test_case_id]["screenshots"].append(
             screenshot
         )
 
     return grouped
 
 
-def write_html(grouped, total_screenshots):
+def get_status(result_map, application, test_case_id):
+    result = result_map.get(
+        (
+            application,
+            test_case_id
+        )
+    )
+
+    if not result:
+        return "NOT RUN"
+
+    return result.get("status", "UNKNOWN")
+
+
+def get_duration(result_map, application, test_case_id):
+    result = result_map.get(
+        (
+            application,
+            test_case_id
+        )
+    )
+
+    if not result:
+        return ""
+
+    duration = result.get("duration_seconds")
+
+    if duration is None:
+        return ""
+
+    return f"{duration}s"
+
+
+def status_class(status):
+    status = status.upper()
+
+    if status == "PASSED":
+        return "status-passed"
+
+    if status == "FAILED":
+        return "status-failed"
+
+    if status == "TIMEOUT":
+        return "status-failed"
+
+    return "status-not-run"
+
+
+def write_html(grouped, result_map, total_screenshots):
     os.makedirs(REPORT_DIR, exist_ok=True)
 
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    total_tests = 0
+    passed_tests = 0
+    failed_tests = 0
+    not_run_tests = 0
+
+    for application, app_data in grouped.items():
+        for _, test_cases in app_data["modules"].items():
+            for test_case_id in test_cases:
+                total_tests += 1
+
+                status = get_status(
+                    result_map,
+                    application,
+                    test_case_id
+                )
+
+                if status == "PASSED":
+                    passed_tests += 1
+                elif status == "FAILED":
+                    failed_tests += 1
+                else:
+                    not_run_tests += 1
 
     html_parts = []
 
@@ -329,147 +448,243 @@ def write_html(grouped, total_screenshots):
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Playwright UI Automation Report</title>
+    <title>OTCT-7968 Playwright Execution Report</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 24px;
-            background: #f6f8fa;
-            color: #24292f;
-        }
-
-        h1 {
-            color: #0b5cab;
-            margin-bottom: 4px;
-        }
-
-        h2 {
             margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f8fafc;
+            color: #101828;
         }
 
-        h3 {
-            margin-bottom: 8px;
+        .page {
+            padding: 28px;
         }
 
-        h4 {
-            margin-bottom: 4px;
+        .header {
+            background: linear-gradient(90deg, #0b4dbb, #1570ef);
+            color: white;
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-bottom: 22px;
         }
 
-        .summary {
-            background: #ffffff;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            padding: 14px 18px;
-            margin: 16px 0 24px 0;
+        .header h1 {
+            margin: 0;
+            font-size: 30px;
         }
 
-        .application {
-            margin-top: 28px;
-            padding: 14px 18px;
-            background: #eaf3ff;
-            border-left: 6px solid #0969da;
-            border-radius: 8px;
-        }
-
-        .module {
-            margin-top: 18px;
-            padding: 14px;
-            background: #ffffff;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-        }
-
-        .testcase {
-            margin-top: 14px;
-            padding: 12px;
-            background: #fafafa;
-            border: 1px solid #eaeef2;
-            border-radius: 8px;
-        }
-
-        .testcase-name {
-            color: #57606a;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .badge {
-            display: inline-block;
-            background: #0969da;
-            color: #ffffff;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin-left: 8px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 14px;
-            margin-top: 10px;
-        }
-
-        .card {
-            background: #ffffff;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-        }
-
-        .card img {
-            width: 100%;
-            max-height: 260px;
-            object-fit: contain;
-            border: 1px solid #d8dee4;
-            background: #ffffff;
-            border-radius: 4px;
-        }
-
-        .step {
-            font-size: 13px;
-            font-weight: bold;
+        .header .sub {
             margin-top: 8px;
-            color: #24292f;
-            word-break: break-word;
+            font-size: 14px;
+            opacity: 0.9;
         }
 
-        .filename {
-            font-size: 12px;
-            color: #57606a;
-            word-break: break-all;
-            margin-top: 4px;
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
         }
 
-        .empty {
-            background: #fff8c5;
-            border: 1px solid #f0d98c;
-            border-radius: 8px;
+        .summary-card {
+            background: #ffffff;
+            border: 1px solid #d0d5dd;
+            border-radius: 12px;
             padding: 16px;
         }
 
-        a {
-            color: #0969da;
-            text-decoration: none;
+        .summary-label {
+            color: #667085;
+            font-size: 13px;
         }
 
-        a:hover {
-            text-decoration: underline;
+        .summary-value {
+            margin-top: 6px;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .application-title {
+            background: #eef4ff;
+            border-left: 6px solid #155eef;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }
+
+        .module-card {
+            background: #ffffff;
+            border: 1px solid #d0d5dd;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .module-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .test-card {
+            border: 1px solid #eaecf0;
+            background: #fcfcfd;
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 14px;
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .test-id {
+            font-weight: 800;
+            font-size: 15px;
+        }
+
+        .test-name {
+            margin-top: 3px;
+            color: #667085;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            margin-left: 6px;
+        }
+
+        .status-passed {
+            background: #dcfae6;
+            color: #067647;
+            border: 1px solid #abefc6;
+        }
+
+        .status-failed {
+            background: #fee4e2;
+            color: #b42318;
+            border: 1px solid #fecdca;
+        }
+
+        .status-not-run {
+            background: #f2f4f7;
+            color: #344054;
+            border: 1px solid #d0d5dd;
+        }
+
+        .count-badge {
+            background: #eef4ff;
+            color: #155eef;
+            border: 1px solid #c7d7fe;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 14px;
+        }
+
+        .shot-card {
+            background: white;
+            border: 1px solid #d0d5dd;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .shot-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: contain;
+            background: #f2f4f7;
+            border-bottom: 1px solid #eaecf0;
+            display: block;
+        }
+
+        .shot-body {
+            padding: 10px 12px;
+        }
+
+        .step-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: #1d2939;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .file-name {
+            color: #667085;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        details {
+            margin-top: 10px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: #155eef;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .empty {
+            background: #fffaeb;
+            border: 1px solid #fedf89;
+            border-radius: 12px;
+            padding: 18px;
+            color: #93370d;
         }
     </style>
 </head>
 <body>
+<div class="page">
         """
     )
 
-    html_parts.append("<h1>OTCT-7968 Screenshot Report</h1>")
-
     html_parts.append(
         f"""
-<div class="summary">
-    <div><strong>Generated At:</strong> {html.escape(generated_at)}</div>
-    <div><strong>Total Screenshots:</strong> {total_screenshots}</div>
+<div class="header">
+    <h1>OTCT-7968 Playwright Execution Report</h1>
+    <div class="sub">Generated at {html.escape(generated_at)}</div>
+</div>
+
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="summary-label">Test Cases With Screenshots</div>
+        <div class="summary-value">{total_tests}</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Passed</div>
+        <div class="summary-value" style="color:#067647;">{passed_tests}</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Failed</div>
+        <div class="summary-value" style="color:#b42318;">{failed_tests}</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Not Run / Unknown</div>
+        <div class="summary-value" style="color:#344054;">{not_run_tests}</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Screenshots Embedded</div>
+        <div class="summary-value">{total_screenshots}</div>
+    </div>
 </div>
         """
     )
@@ -478,66 +693,91 @@ def write_html(grouped, total_screenshots):
         html_parts.append(
             """
 <div class="empty">
-    No screenshots were found under runtime/screenshots.
+    No screenshots found under runtime/screenshots.
 </div>
             """
         )
     else:
-        for application, modules in grouped.items():
+        for application, app_data in grouped.items():
             html_parts.append(
                 f"""
-<div class="application">
-    <h2>{html.escape(application)}</h2>
-</div>
+<div class="application-title">{html.escape(app_data["display"])}</div>
                 """
             )
 
-            for module, test_cases in modules.items():
-                module_count = sum(
-                    len(test_case_data["screenshots"])
-                    for test_case_data in test_cases.values()
+            for module, test_cases in app_data["modules"].items():
+                module_screenshot_count = sum(
+                    len(test_data["screenshots"])
+                    for test_data in test_cases.values()
                 )
 
                 html_parts.append(
                     f"""
-<div class="module">
-    <h3>{html.escape(module)} <span class="badge">{module_count}</span></h3>
+<div class="module-card">
+    <div class="module-title">
+        {html.escape(module)}
+        <span class="badge count-badge">{module_screenshot_count} screenshots</span>
+    </div>
                     """
                 )
 
-                for test_case_id, test_case_data in test_cases.items():
-                    screenshots = test_case_data["screenshots"]
-                    test_case_name = test_case_data["name"]
+                for test_case_id, test_data in test_cases.items():
+                    status = get_status(
+                        result_map,
+                        application,
+                        test_case_id
+                    )
+
+                    duration = get_duration(
+                        result_map,
+                        application,
+                        test_case_id
+                    )
+
+                    screenshots = test_data["screenshots"]
 
                     html_parts.append(
                         f"""
-<div class="testcase">
-    <h4>{html.escape(test_case_id)} <span class="badge">{len(screenshots)}</span></h4>
-    <div class="testcase-name">{html.escape(test_case_name)}</div>
-    <div class="grid">
+<div class="test-card">
+    <div class="test-header">
+        <div>
+            <div class="test-id">{html.escape(test_case_id)}</div>
+            <div class="test-name">{html.escape(test_data["name"])}</div>
+        </div>
+        <div>
+            <span class="badge {status_class(status)}">{html.escape(status)}</span>
+            <span class="badge count-badge">{len(screenshots)} screenshots</span>
+            <span class="badge count-badge">{html.escape(duration)}</span>
+        </div>
+    </div>
+
+    <details open>
+        <summary>View screenshots</summary>
+        <div class="screenshot-grid">
                         """
                     )
 
                     for screenshot in screenshots:
-                        relative_path = html.escape(screenshot["relative_path"])
-                        file_name = html.escape(screenshot["file_name"])
-                        step_name = html.escape(screenshot["step_name"])
+                        encoded_image = encode_image_base64(
+                            screenshot["absolute_path"]
+                        )
 
                         html_parts.append(
                             f"""
-        <div class="card">
-            {relative_path}
-                {relative_path}
-            </a>
-            <div class="step">{step_name}</div>
-            <div class="filename">{file_name}</div>
-        </div>
+            <div class="shot-card">
+                {encoded_image}">
+                <div class="shot-body">
+                    <div class="step-name">{html.escape(screenshot["step_name"])}</div>
+                    <div class="file-name">{html.escape(screenshot["file_name"])}</div>
+                </div>
+            </div>
                             """
                         )
 
                     html_parts.append(
                         """
-    </div>
+        </div>
+    </details>
 </div>
                         """
                     )
@@ -546,6 +786,7 @@ def write_html(grouped, total_screenshots):
 
     html_parts.append(
         """
+</div>
 </body>
 </html>
         """
@@ -558,15 +799,17 @@ def write_html(grouped, total_screenshots):
 
 
 def generate_html_report():
+    result_map = load_results()
     screenshots = collect_screenshots()
     grouped = group_screenshots(screenshots)
 
     return write_html(
         grouped,
+        result_map,
         len(screenshots)
     )
 
 
 if __name__ == "__main__":
-    report = generate_html_report()
-    print(f"Generated screenshot report: {report}")
+    path = generate_html_report()
+    print(f"Generated HTML report: {path}")
