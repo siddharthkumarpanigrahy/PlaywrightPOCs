@@ -207,9 +207,9 @@ post {
         )
 
         emailext(
-            subject: "Playwright | Daily UI Test Execution | ${currentBuild.currentResult}",
+            subject: "Playwright | Daily UI Automation Test Execution | ${currentBuild.currentResult}",
             body: """
-Daily Playwright UI Test Execution Completed
+Daily Playwright UI Automation Test Execution Completed
 
 Result:
 ${currentBuild.currentResult}
