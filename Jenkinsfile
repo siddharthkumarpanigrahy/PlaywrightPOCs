@@ -229,7 +229,7 @@ ${env.NODE_NAME}
 Build URL:
 ${env.BUILD_URL}
             """,
-            attachmentsPattern: 'runtime/email_attachments/*',
+        //    attachmentsPattern: 'runtime/email_attachments/*',
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
     }
