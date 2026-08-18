@@ -158,29 +158,17 @@ post {
             mkdir -p runtime/email_attachments
             rm -f runtime/email_attachments/*
 
-            if [ -f runtime/reports/screenshot_report.html ]; then
-                cp runtime/reports/screenshot_report.html runtime/email_attachments/
-                echo "Attached screenshot HTML report"
+            if [ -d runtime/reports ]; then
+                zip -r runtime/email_attachments/screenshot_report.zip runtime/reports
+                echo "Attached screenshot report as ZIP"
             else
-                echo "screenshot_report.html not found. Selecting latest artifact instead."
-
-                LATEST_FILE=$(find runtime/screenshots runtime/logs runtime/reports -type f \
-                    \\( -name "*.png" -o -name "*.log" -o -name "*.txt" -o -name "*.json" -o -name "*.html" \\) \
-                    -printf "%T@ %p\\n" 2>/dev/null \
-                    | sort -nr \
-                    | head -1 \
-                    | cut -d " " -f2-)
-
-                if [ -n "$LATEST_FILE" ]; then
-                    echo "Latest attachment selected: $LATEST_FILE"
-                    cp "$LATEST_FILE" runtime/email_attachments/
-                else
-                    echo "No artifact found for email attachment"
-                fi
+                echo "runtime/reports folder not found. No report attached."
             fi
-
+            
             ls -l runtime/email_attachments || true
         '''
+
+        
 
         archiveArtifacts(
             artifacts: 'runtime/screenshots/**/*.png',
@@ -228,10 +216,19 @@ ${env.NODE_NAME}
 
 Build URL:
 ${env.BUILD_URL}
-            """,
-        //    attachmentsPattern: 'runtime/email_attachments/*',
-            to: 'siddharth.panigrahy@deutsche-boerse.com'
-        )
+
+HTML Execution Report:
+${env.BUILD_URL}artifact/runtime/reports/screenshot_report.html
+
+Runner Summary:
+${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
+
+Runner Results JSON:
+${env.BUILD_URL}artifact/runtime/reports/runner_results.json
+    """,
+    attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
+    to: 'siddharth.panigrahy@deutsche-boerse.com'
+)
     }
 
     success {
