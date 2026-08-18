@@ -158,11 +158,11 @@ post {
             mkdir -p runtime/email_attachments
             rm -f runtime/email_attachments/*
 
-            if [ -d runtime/reports ]; then
-                zip -r runtime/email_attachments/screenshot_report.zip runtime/reports
+            if [ -f runtime/reports/screenshot_report.html ]; then
+                zip -j runtime/email_attachments/screenshot_report.zip runtime/reports/screenshot_report.html
                 echo "Attached screenshot report as ZIP"
             else
-                echo "runtime/reports folder not found. No report attached."
+                echo "runtime/reports/screenshot_report.html not found. No report attached."
             fi
             
             ls -l runtime/email_attachments || true
@@ -226,7 +226,7 @@ ${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
 Runner Results JSON:
 ${env.BUILD_URL}artifact/runtime/reports/runner_results.json
     """,
-    attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
+    //attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
     to: 'siddharth.panigrahy@deutsche-boerse.com'
 )
     }
