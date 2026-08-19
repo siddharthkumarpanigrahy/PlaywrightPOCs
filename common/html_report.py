@@ -806,17 +806,19 @@ def write_html(grouped, result_map, total_screenshots):
                     )
 
                     for screenshot in screenshots:
-                        encoded_image = encode_image_base64(
-                            screenshot["absolute_path"]
-                        )
+                        image_src = os.path.relpath(
+                            screenshot["absolute_path"],
+                            REPORT_DIR
+                        ).replace("\\", "/")
 
+                        safe_image_src = html.escape(image_src)
                         safe_file_name = html.escape(screenshot["file_name"])
                         safe_step_name = html.escape(screenshot["step_name"])
 
                         html_parts.append(
                             f"""
                                     <div class="shot-card">
-                                        <img src="{encoded_image}" alt="{safe_file_name}">
+                                        <img src="{safe_image_src}" alt="{safe_file_name}">
                                         <div class="shot-body">
                                             <div class="step-name">{safe_step_name}</div>
                                             <div class="file-name">{safe_file_name}</div>
