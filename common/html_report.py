@@ -587,288 +587,284 @@ def write_html(grouped, result_map, total_screenshots):
 
     html_parts = []
 
-    html_parts.append(
-        """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Playwright Execution Report</title>
-    <style>
-        :root {
-            --primary: #155eef;
-            --primary-dark: #0b4dbb;
-            --primary-light: #eef4ff;
-            --success-bg: #dcfae6;
-            --success-text: #067647;
-            --success-border: #abefc6;
-            --failure-bg: #fee4e2;
-            --failure-text: #b42318;
-            --failure-border: #fecdca;
-            --neutral-bg: #f2f4f7;
-            --neutral-text: #344054;
-            --neutral-border: #d0d5dd;
-            --warning-bg: #fffaeb;
-            --warning-border: #fedf89;
-            --warning-text: #93370d;
-            --page-bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #101828;
-            --text-muted: #667085;
-            --border: #d0d5dd;
-            --soft-border: #eaecf0;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: var(--page-bg);
-            color: var(--text-main);
-        }
-
-        .page {
-            padding: 28px;
-        }
-
-        .header {
-            background: linear-gradient(90deg, var(--primary-dark), var(--primary));
-            color: #ffffff;
-            border-radius: 16px;
-            padding: 26px 30px;
-            margin-bottom: 22px;
-            box-shadow: 0 4px 12px rgba(21, 94, 239, 0.18);
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 30px;
-            font-weight: 800;
-        }
-
-        .header .sub {
-            margin-top: 8px;
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 14px;
-            margin-bottom: 24px;
-        }
-
-        .summary-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 16px 18px;
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
-        }
-
-        .summary-label {
-            color: var(--text-muted);
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .summary-value {
-            margin-top: 8px;
-            font-size: 28px;
-            font-weight: 800;
-        }
-
-        .summary-pass {
-            color: var(--success-text);
-        }
-
-        .summary-fail {
-            color: var(--failure-text);
-        }
-
-        .summary-neutral {
-            color: var(--neutral-text);
-        }
-
-        .application-title {
-            background: var(--primary-light);
-            border-left: 6px solid var(--primary);
-            border-radius: 12px;
-            padding: 15px 18px;
-            font-size: 22px;
-            font-weight: 800;
-            margin-top: 24px;
-            margin-bottom: 16px;
-        }
-
-        .module-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
-        }
-
-        .module-title {
-            font-size: 18px;
-            font-weight: 800;
-            margin-bottom: 14px;
-        }
-
-        .test-card {
-            border: 1px solid var(--soft-border);
-            background: #fcfcfd;
-            border-radius: 14px;
-            padding: 15px;
-            margin-top: 14px;
-        }
-
-        .test-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 12px;
-        }
-
-        .test-id {
-            font-weight: 800;
-            font-size: 15px;
-        }
-
-        .test-name {
-            margin-top: 4px;
-            color: var(--text-muted);
-            font-size: 13px;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 12px;
-            font-weight: 800;
-            white-space: nowrap;
-            margin-left: 6px;
-        }
-
-        .status-passed {
-            background: var(--success-bg);
-            color: var(--success-text);
-            border: 1px solid var(--success-border);
-        }
-
-        .status-failed {
-            background: var(--failure-bg);
-            color: var(--failure-text);
-            border: 1px solid var(--failure-border);
-        }
-
-        .status-not-run {
-            background: var(--neutral-bg);
-            color: var(--neutral-text);
-            border: 1px solid var(--neutral-border);
-        }
-
-        .count-badge {
-            background: var(--primary-light);
-            color: var(--primary);
-            border: 1px solid #c7d7fe;
-        }
-
-        .duration-badge {
-            background: #f9fafb;
-            color: #475467;
-            border: 1px solid var(--neutral-border);
-        }
-
-        details {
-            margin-top: 10px;
-        }
-
-        summary {
-            cursor: pointer;
-            color: var(--primary);
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .screenshot-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 14px;
-        }
-
-        .shot-card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
-        }
-
-        .shot-card img {
-            width: 100%;
-            height: 230px;
-            object-fit: contain;
-            background: #f2f4f7;
-            border-bottom: 1px solid var(--soft-border);
-            display: block;
-        }
-
-        .shot-body {
-            padding: 10px 12px;
-        }
-
-        .step-name {
-            font-weight: 800;
-            font-size: 13px;
-            color: #1d2939;
-            margin-bottom: 4px;
-            word-break: break-word;
-        }
-
-        .file-name {
-            color: var(--text-muted);
-            font-size: 12px;
-            word-break: break-all;
-        }
-
-        .no-screenshots {
-            background: var(--warning-bg);
-            border: 1px solid var(--warning-border);
-            color: var(--warning-text);
-            border-radius: 12px;
-            padding: 14px;
-            font-weight: 600;
-        }
-
-        .empty {
-            background: var(--warning-bg);
-            border: 1px solid var(--warning-border);
-            border-radius: 12px;
-            padding: 18px;
-            color: var(--warning-text);
-        }
-
-        .footer {
-            margin-top: 26px;
-            color: var(--text-muted);
-            font-size: 12px;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-<div class="page">
-        """
-    )
+    html_parts.append("<!DOCTYPE html>")
+    html_parts.append("<html>")
+    html_parts.append("<head>")
+    html_parts.append("    <meta charset=\"utf-8\">")
+    html_parts.append("    <title>Playwright Execution Report</title>")
+    html_parts.append("    <style>")
+    html_parts.append("        :root {")
+    html_parts.append("            --primary: #155eef;")
+    html_parts.append("            --primary-dark: #0b4dbb;")
+    html_parts.append("            --primary-light: #eef4ff;")
+    html_parts.append("            --success-bg: #dcfae6;")
+    html_parts.append("            --success-text: #067647;")
+    html_parts.append("            --success-border: #abefc6;")
+    html_parts.append("            --failure-bg: #fee4e2;")
+    html_parts.append("            --failure-text: #b42318;")
+    html_parts.append("            --failure-border: #fecdca;")
+    html_parts.append("            --neutral-bg: #f2f4f7;")
+    html_parts.append("            --neutral-text: #344054;")
+    html_parts.append("            --neutral-border: #d0d5dd;")
+    html_parts.append("            --warning-bg: #fffaeb;")
+    html_parts.append("            --warning-border: #fedf89;")
+    html_parts.append("            --warning-text: #93370d;")
+    html_parts.append("            --page-bg: #f8fafc;")
+    html_parts.append("            --card-bg: #ffffff;")
+    html_parts.append("            --text-main: #101828;")
+    html_parts.append("            --text-muted: #667085;")
+    html_parts.append("            --border: #d0d5dd;")
+    html_parts.append("            --soft-border: #eaecf0;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        * {")
+    html_parts.append("            box-sizing: border-box;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        body {")
+    html_parts.append("            margin: 0;")
+    html_parts.append("            font-family: \"Segoe UI\", Arial, sans-serif;")
+    html_parts.append("            background: var(--page-bg);")
+    html_parts.append("            color: var(--text-main);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .page {")
+    html_parts.append("            padding: 28px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .header {")
+    html_parts.append("            background: linear-gradient(90deg, var(--primary-dark), var(--primary));")
+    html_parts.append("            color: #ffffff;")
+    html_parts.append("            border-radius: 16px;")
+    html_parts.append("            padding: 26px 30px;")
+    html_parts.append("            margin-bottom: 22px;")
+    html_parts.append("            box-shadow: 0 4px 12px rgba(21, 94, 239, 0.18);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .header h1 {")
+    html_parts.append("            margin: 0;")
+    html_parts.append("            font-size: 30px;")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .header .sub {")
+    html_parts.append("            margin-top: 8px;")
+    html_parts.append("            font-size: 14px;")
+    html_parts.append("            opacity: 0.9;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-grid {")
+    html_parts.append("            display: grid;")
+    html_parts.append("            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));")
+    html_parts.append("            gap: 14px;")
+    html_parts.append("            margin-bottom: 24px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-card {")
+    html_parts.append("            background: var(--card-bg);")
+    html_parts.append("            border: 1px solid var(--border);")
+    html_parts.append("            border-radius: 14px;")
+    html_parts.append("            padding: 16px 18px;")
+    html_parts.append("            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-label {")
+    html_parts.append("            color: var(--text-muted);")
+    html_parts.append("            font-size: 13px;")
+    html_parts.append("            font-weight: 600;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-value {")
+    html_parts.append("            margin-top: 8px;")
+    html_parts.append("            font-size: 28px;")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-pass {")
+    html_parts.append("            color: var(--success-text);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-fail {")
+    html_parts.append("            color: var(--failure-text);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .summary-neutral {")
+    html_parts.append("            color: var(--neutral-text);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .application-title {")
+    html_parts.append("            background: var(--primary-light);")
+    html_parts.append("            border-left: 6px solid var(--primary);")
+    html_parts.append("            border-radius: 12px;")
+    html_parts.append("            padding: 15px 18px;")
+    html_parts.append("            font-size: 22px;")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("            margin-top: 24px;")
+    html_parts.append("            margin-bottom: 16px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .module-card {")
+    html_parts.append("            background: var(--card-bg);")
+    html_parts.append("            border: 1px solid var(--border);")
+    html_parts.append("            border-radius: 16px;")
+    html_parts.append("            padding: 18px;")
+    html_parts.append("            margin-bottom: 20px;")
+    html_parts.append("            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .module-title {")
+    html_parts.append("            font-size: 18px;")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("            margin-bottom: 14px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .test-card {")
+    html_parts.append("            border: 1px solid var(--soft-border);")
+    html_parts.append("            background: #fcfcfd;")
+    html_parts.append("            border-radius: 14px;")
+    html_parts.append("            padding: 15px;")
+    html_parts.append("            margin-top: 14px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .test-header {")
+    html_parts.append("            display: flex;")
+    html_parts.append("            justify-content: space-between;")
+    html_parts.append("            align-items: flex-start;")
+    html_parts.append("            gap: 16px;")
+    html_parts.append("            margin-bottom: 12px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .test-id {")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("            font-size: 15px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .test-name {")
+    html_parts.append("            margin-top: 4px;")
+    html_parts.append("            color: var(--text-muted);")
+    html_parts.append("            font-size: 13px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .badge {")
+    html_parts.append("            display: inline-flex;")
+    html_parts.append("            align-items: center;")
+    html_parts.append("            border-radius: 999px;")
+    html_parts.append("            padding: 4px 10px;")
+    html_parts.append("            font-size: 12px;")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("            white-space: nowrap;")
+    html_parts.append("            margin-left: 6px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .status-passed {")
+    html_parts.append("            background: var(--success-bg);")
+    html_parts.append("            color: var(--success-text);")
+    html_parts.append("            border: 1px solid var(--success-border);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .status-failed {")
+    html_parts.append("            background: var(--failure-bg);")
+    html_parts.append("            color: var(--failure-text);")
+    html_parts.append("            border: 1px solid var(--failure-border);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .status-not-run {")
+    html_parts.append("            background: var(--neutral-bg);")
+    html_parts.append("            color: var(--neutral-text);")
+    html_parts.append("            border: 1px solid var(--neutral-border);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .count-badge {")
+    html_parts.append("            background: var(--primary-light);")
+    html_parts.append("            color: var(--primary);")
+    html_parts.append("            border: 1px solid #c7d7fe;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .duration-badge {")
+    html_parts.append("            background: #f9fafb;")
+    html_parts.append("            color: #475467;")
+    html_parts.append("            border: 1px solid var(--neutral-border);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        details {")
+    html_parts.append("            margin-top: 10px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        summary {")
+    html_parts.append("            cursor: pointer;")
+    html_parts.append("            color: var(--primary);")
+    html_parts.append("            font-weight: 700;")
+    html_parts.append("            margin-bottom: 10px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .screenshot-grid {")
+    html_parts.append("            display: grid;")
+    html_parts.append("            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));")
+    html_parts.append("            gap: 14px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .shot-card {")
+    html_parts.append("            background: #ffffff;")
+    html_parts.append("            border: 1px solid var(--border);")
+    html_parts.append("            border-radius: 14px;")
+    html_parts.append("            overflow: hidden;")
+    html_parts.append("            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .shot-card img {")
+    html_parts.append("            width: 100%;")
+    html_parts.append("            height: 230px;")
+    html_parts.append("            object-fit: contain;")
+    html_parts.append("            background: #f2f4f7;")
+    html_parts.append("            border-bottom: 1px solid var(--soft-border);")
+    html_parts.append("            display: block;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .shot-body {")
+    html_parts.append("            padding: 10px 12px;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .step-name {")
+    html_parts.append("            font-weight: 800;")
+    html_parts.append("            font-size: 13px;")
+    html_parts.append("            color: #1d2939;")
+    html_parts.append("            margin-bottom: 4px;")
+    html_parts.append("            word-break: break-word;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .file-name {")
+    html_parts.append("            color: var(--text-muted);")
+    html_parts.append("            font-size: 12px;")
+    html_parts.append("            word-break: break-all;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .no-screenshots {")
+    html_parts.append("            background: var(--warning-bg);")
+    html_parts.append("            border: 1px solid var(--warning-border);")
+    html_parts.append("            color: var(--warning-text);")
+    html_parts.append("            border-radius: 12px;")
+    html_parts.append("            padding: 14px;")
+    html_parts.append("            font-weight: 600;")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .empty {")
+    html_parts.append("            background: var(--warning-bg);")
+    html_parts.append("            border: 1px solid var(--warning-border);")
+    html_parts.append("            border-radius: 12px;")
+    html_parts.append("            padding: 18px;")
+    html_parts.append("            color: var(--warning-text);")
+    html_parts.append("        }")
+    html_parts.append("")
+    html_parts.append("        .footer {")
+    html_parts.append("            margin-top: 26px;")
+    html_parts.append("            color: var(--text-muted);")
+    html_parts.append("            font-size: 12px;")
+    html_parts.append("            text-align: center;")
+    html_parts.append("        }")
+    html_parts.append("    </style>")
+    html_parts.append("</head>")
+    html_parts.append("<body>")
+    html_parts.append("<div class=\"page\">")
 
     html_parts.append(
         f"""
@@ -985,7 +981,7 @@ def write_html(grouped, result_map, total_screenshots):
                         html_parts.append(
                             f"""
             <div class="shot-card">
-                {safe_image_src}">
+                <img src="{safe_image_src}" alt="{safe_step_name}">
                 <div class="shot-body">
                     <div class="step-name">{safe_step_name}</div>
                     <div class="file-name">{safe_file_name}</div>
