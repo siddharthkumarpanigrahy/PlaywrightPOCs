@@ -1,6 +1,5 @@
-import json
-import base64
 import html
+import json
 import os
 from datetime import datetime
 
@@ -10,6 +9,10 @@ REPORT_DIR = "runtime/reports"
 RESULTS_JSON = "runtime/reports/runner_results.json"
 REPORT_FILE = "runtime/reports/screenshot_report.html"
 
+
+# --------------------------------------------------
+# Metadata
+# --------------------------------------------------
 
 OTC_TEST_METADATA = {
     "001": {
@@ -184,6 +187,10 @@ MC_TEST_METADATA = {
 }
 
 
+# --------------------------------------------------
+# Result Loading
+# --------------------------------------------------
+
 def load_results():
     if not os.path.exists(RESULTS_JSON):
         return {}
@@ -202,6 +209,20 @@ def load_results():
         result_map[key] = result
 
     return result_map
+
+
+# --------------------------------------------------
+# Inference Helpers
+# --------------------------------------------------
+
+def display_application(application):
+    if application == "OTC_GUI":
+        return "OTC-GUI"
+
+    if application == "MC_GUI":
+        return "MC-GUI"
+
+    return application
 
 
 def extract_tc_number(file_name):
@@ -231,28 +252,10 @@ def infer_application(file_name):
     return "OTC_GUI"
 
 
-def display_application(application):
-    if application == "MC_GUI":
-        return "MC-GUI"
-
-    if application == "OTC_GUI":
-        return "OTC-GUI"
-
-    return application
-
-
 def infer_metadata(file_name):
     lower_name = file_name.lower()
 
-    # --------------------------------------------------
-    # OTC-GUI Smoke screenshots
-    # Examples:
-    # login_logout_success_20260819_104611.png
-    # otc_login_page_loaded.png
-    # otc_credentials_entered.png
-    # otc_after_login.png
-    # --------------------------------------------------
-
+    # OTC smoke screenshots
     if (
         lower_name.startswith("login_logout")
         or lower_name.startswith("otc_login")
@@ -260,6 +263,7 @@ def infer_metadata(file_name):
         or lower_name.startswith("otc_after_login")
         or lower_name.startswith("otc_after_logout")
         or "login_logout_success" in lower_name
+        or "login_logout_failed" in lower_name
     ):
         return (
             "OTC_GUI",
@@ -267,10 +271,6 @@ def infer_metadata(file_name):
             "OTC_SMOKE_TC001",
             "Smoke Test: Login and Logout"
         )
-
-    # --------------------------------------------------
-    # Normal MC-GUI and OTC-GUI test screenshots
-    # --------------------------------------------------
 
     application = infer_application(file_name)
     tc_number = extract_tc_number(file_name)
@@ -297,12 +297,56 @@ def infer_metadata(file_name):
     return application, metadata["module"], metadata["id"], metadata["name"]
 
 
+def infer_module_from_result(result):
+    pack = result.get("pack", "").upper()
+    module_path = result.get("module", "").lower()
+
+    if pack == "SMOKE":
+        return "Smoke Test"
+
+    if "password" in module_path:
+        return "Password Reset Functionality"
+
+    if "mc_gui.security" in module_path:
+        return "Input File Validation"
+
+    if "otc_gui.security" in module_path:
+        return "Security Validation"
+
+    return "General Validation"
+
+
+def infer_test_name_from_result(application, test_case_id, result):
+    module_path = result.get("module", "")
+
+    if test_case_id == "OTC_SMOKE_TC001":
+        return "Smoke Test: Login and Logout"
+
+    if application == "MC_GUI":
+        for metadata in MC_TEST_METADATA.values():
+            if metadata["id"] == test_case_id:
+                return metadata["name"]
+
+    if application == "OTC_GUI":
+        for metadata in OTC_TEST_METADATA.values():
+            if metadata["id"] == test_case_id:
+                return metadata["name"]
+
+    module_name = module_path.split(".")[-1]
+    module_name = module_name.replace("_", " ").replace("-", " ").title()
+
+    return module_name or test_case_id
+
+
 def get_step_name(file_name):
     name_without_extension = os.path.splitext(file_name)[0]
     lower_name = name_without_extension.lower()
 
     if lower_name.startswith("login_logout_success"):
         return "Login and Logout Success"
+
+    if lower_name.startswith("login_logout_failed"):
+        return "Login and Logout Failed"
 
     if lower_name.startswith("otc_login"):
         return "OTC Login Page"
@@ -326,12 +370,58 @@ def get_step_name(file_name):
 
     return name_without_extension.replace("_", " ").replace("-", " ").title()
 
-def encode_image_base64(path):
-    with open(path, "rb") as image_file:
-        encoded = base64.b64encode(image_file.read()).decode("utf-8")
 
-    return f"data:image/png;base64,{encoded}"
+def status_class(status):
+    status = status.upper()
 
+    if status == "PASSED":
+        return "status-passed"
+
+    if status == "FAILED":
+        return "status-failed"
+
+    if status == "TIMEOUT":
+        return "status-failed"
+
+    return "status-not-run"
+
+
+def get_status(result_map, application, test_case_id):
+    result = result_map.get(
+        (
+            application,
+            test_case_id
+        )
+    )
+
+    if not result:
+        return "NOT RUN"
+
+    return result.get("status", "UNKNOWN")
+
+
+def get_duration(result_map, application, test_case_id):
+    result = result_map.get(
+        (
+            application,
+            test_case_id
+        )
+    )
+
+    if not result:
+        return ""
+
+    duration = result.get("duration_seconds")
+
+    if duration is None:
+        return ""
+
+    return f"{duration}s"
+
+
+# --------------------------------------------------
+# Screenshot Collection
+# --------------------------------------------------
 
 def collect_screenshots():
     screenshots = []
@@ -376,13 +466,64 @@ def collect_screenshots():
     return screenshots
 
 
-def group_screenshots(screenshots):
+# --------------------------------------------------
+# Grouping
+# --------------------------------------------------
+
+def build_grouped_from_results(result_map):
     grouped = {}
 
+    for (application, test_case_id), result in result_map.items():
+        module = infer_module_from_result(result)
+
+        test_name = infer_test_name_from_result(
+            application,
+            test_case_id,
+            result
+        )
+
+        grouped.setdefault(
+            application,
+            {
+                "display": display_application(application),
+                "modules": {}
+            }
+        )
+
+        grouped[application]["modules"].setdefault(
+            module,
+            {}
+        )
+
+        grouped[application]["modules"][module].setdefault(
+            test_case_id,
+            {
+                "name": test_name,
+                "screenshots": []
+            }
+        )
+
+    return grouped
+
+
+def attach_screenshots_to_grouped(grouped, screenshots):
     for screenshot in screenshots:
         application = screenshot["application"]
-        module = screenshot["module"]
         test_case_id = screenshot["test_case_id"]
+
+        attached = False
+
+        if application in grouped:
+            for module in grouped[application]["modules"]:
+                if test_case_id in grouped[application]["modules"][module]:
+                    grouped[application]["modules"][module][test_case_id]["screenshots"].append(
+                        screenshot
+                    )
+                    attached = True
+                    break
+
+        if attached:
+            continue
 
         grouped.setdefault(
             application,
@@ -392,8 +533,12 @@ def group_screenshots(screenshots):
             }
         )
 
-        grouped[application]["modules"].setdefault(module, {})
-        grouped[application]["modules"][module].setdefault(
+        grouped[application]["modules"].setdefault(
+            screenshot["module"],
+            {}
+        )
+
+        grouped[application]["modules"][screenshot["module"]].setdefault(
             test_case_id,
             {
                 "name": screenshot["test_case_name"],
@@ -401,60 +546,16 @@ def group_screenshots(screenshots):
             }
         )
 
-        grouped[application]["modules"][module][test_case_id]["screenshots"].append(
+        grouped[application]["modules"][screenshot["module"]][test_case_id]["screenshots"].append(
             screenshot
         )
 
     return grouped
 
 
-def get_status(result_map, application, test_case_id):
-    result = result_map.get(
-        (
-            application,
-            test_case_id
-        )
-    )
-
-    if not result:
-        return "NOT RUN"
-
-    return result.get("status", "UNKNOWN")
-
-
-def get_duration(result_map, application, test_case_id):
-    result = result_map.get(
-        (
-            application,
-            test_case_id
-        )
-    )
-
-    if not result:
-        return ""
-
-    duration = result.get("duration_seconds")
-
-    if duration is None:
-        return ""
-
-    return f"{duration}s"
-
-
-def status_class(status):
-    status = status.upper()
-
-    if status == "PASSED":
-        return "status-passed"
-
-    if status == "FAILED":
-        return "status-failed"
-
-    if status == "TIMEOUT":
-        return "status-failed"
-
-    return "status-not-run"
-
+# --------------------------------------------------
+# HTML Writer
+# --------------------------------------------------
 
 def write_html(grouped, result_map, total_screenshots):
     os.makedirs(REPORT_DIR, exist_ok=True)
@@ -494,11 +595,39 @@ def write_html(grouped, result_map, total_screenshots):
     <meta charset="utf-8">
     <title>Playwright Execution Report</title>
     <style>
+        :root {
+            --primary: #155eef;
+            --primary-dark: #0b4dbb;
+            --primary-light: #eef4ff;
+            --success-bg: #dcfae6;
+            --success-text: #067647;
+            --success-border: #abefc6;
+            --failure-bg: #fee4e2;
+            --failure-text: #b42318;
+            --failure-border: #fecdca;
+            --neutral-bg: #f2f4f7;
+            --neutral-text: #344054;
+            --neutral-border: #d0d5dd;
+            --warning-bg: #fffaeb;
+            --warning-border: #fedf89;
+            --warning-text: #93370d;
+            --page-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #101828;
+            --text-muted: #667085;
+            --border: #d0d5dd;
+            --soft-border: #eaecf0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: "Segoe UI", Arial, sans-serif;
-            background: #f8fafc;
-            color: #101828;
+            background: var(--page-bg);
+            color: var(--text-main);
         }
 
         .page {
@@ -506,16 +635,18 @@ def write_html(grouped, result_map, total_screenshots):
         }
 
         .header {
-            background: linear-gradient(90deg, #0b4dbb, #1570ef);
-            color: white;
-            border-radius: 14px;
-            padding: 24px 28px;
+            background: linear-gradient(90deg, var(--primary-dark), var(--primary));
+            color: #ffffff;
+            border-radius: 16px;
+            padding: 26px 30px;
             margin-bottom: 22px;
+            box-shadow: 0 4px 12px rgba(21, 94, 239, 0.18);
         }
 
         .header h1 {
             margin: 0;
             font-size: 30px;
+            font-weight: 800;
         }
 
         .header .sub {
@@ -526,59 +657,74 @@ def write_html(grouped, result_map, total_screenshots):
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 14px;
             margin-bottom: 24px;
         }
 
         .summary-card {
-            background: #ffffff;
-            border: 1px solid #d0d5dd;
-            border-radius: 12px;
-            padding: 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
         }
 
         .summary-label {
-            color: #667085;
+            color: var(--text-muted);
             font-size: 13px;
+            font-weight: 600;
         }
 
         .summary-value {
-            margin-top: 6px;
-            font-size: 26px;
-            font-weight: 700;
+            margin-top: 8px;
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .summary-pass {
+            color: var(--success-text);
+        }
+
+        .summary-fail {
+            color: var(--failure-text);
+        }
+
+        .summary-neutral {
+            color: var(--neutral-text);
         }
 
         .application-title {
-            background: #eef4ff;
-            border-left: 6px solid #155eef;
-            border-radius: 10px;
-            padding: 14px 18px;
+            background: var(--primary-light);
+            border-left: 6px solid var(--primary);
+            border-radius: 12px;
+            padding: 15px 18px;
             font-size: 22px;
-            font-weight: 700;
+            font-weight: 800;
             margin-top: 24px;
             margin-bottom: 16px;
         }
 
         .module-card {
-            background: #ffffff;
-            border: 1px solid #d0d5dd;
-            border-radius: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             padding: 18px;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
         }
 
         .module-title {
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 14px;
         }
 
         .test-card {
-            border: 1px solid #eaecf0;
+            border: 1px solid var(--soft-border);
             background: #fcfcfd;
-            border-radius: 12px;
-            padding: 14px;
+            border-radius: 14px;
+            padding: 15px;
             margin-top: 14px;
         }
 
@@ -596,8 +742,8 @@ def write_html(grouped, result_map, total_screenshots):
         }
 
         .test-name {
-            margin-top: 3px;
-            color: #667085;
+            margin-top: 4px;
+            color: var(--text-muted);
             font-size: 13px;
         }
 
@@ -607,33 +753,50 @@ def write_html(grouped, result_map, total_screenshots):
             border-radius: 999px;
             padding: 4px 10px;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
             white-space: nowrap;
             margin-left: 6px;
         }
 
         .status-passed {
-            background: #dcfae6;
-            color: #067647;
-            border: 1px solid #abefc6;
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success-border);
         }
 
         .status-failed {
-            background: #fee4e2;
-            color: #b42318;
-            border: 1px solid #fecdca;
+            background: var(--failure-bg);
+            color: var(--failure-text);
+            border: 1px solid var(--failure-border);
         }
 
         .status-not-run {
-            background: #f2f4f7;
-            color: #344054;
-            border: 1px solid #d0d5dd;
+            background: var(--neutral-bg);
+            color: var(--neutral-text);
+            border: 1px solid var(--neutral-border);
         }
 
         .count-badge {
-            background: #eef4ff;
-            color: #155eef;
+            background: var(--primary-light);
+            color: var(--primary);
             border: 1px solid #c7d7fe;
+        }
+
+        .duration-badge {
+            background: #f9fafb;
+            color: #475467;
+            border: 1px solid var(--neutral-border);
+        }
+
+        details {
+            margin-top: 10px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 10px;
         }
 
         .screenshot-grid {
@@ -643,18 +806,19 @@ def write_html(grouped, result_map, total_screenshots):
         }
 
         .shot-card {
-            background: white;
-            border: 1px solid #d0d5dd;
-            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
             overflow: hidden;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
         }
 
         .shot-card img {
             width: 100%;
-            height: 220px;
+            height: 230px;
             object-fit: contain;
             background: #f2f4f7;
-            border-bottom: 1px solid #eaecf0;
+            border-bottom: 1px solid var(--soft-border);
             display: block;
         }
 
@@ -663,7 +827,7 @@ def write_html(grouped, result_map, total_screenshots):
         }
 
         .step-name {
-            font-weight: 700;
+            font-weight: 800;
             font-size: 13px;
             color: #1d2939;
             margin-bottom: 4px;
@@ -671,28 +835,33 @@ def write_html(grouped, result_map, total_screenshots):
         }
 
         .file-name {
-            color: #667085;
+            color: var(--text-muted);
             font-size: 12px;
             word-break: break-all;
         }
 
-        details {
-            margin-top: 10px;
-        }
-
-        summary {
-            cursor: pointer;
-            color: #155eef;
+        .no-screenshots {
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-text);
+            border-radius: 12px;
+            padding: 14px;
             font-weight: 600;
-            margin-bottom: 10px;
         }
 
         .empty {
-            background: #fffaeb;
-            border: 1px solid #fedf89;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
             border-radius: 12px;
             padding: 18px;
-            color: #93370d;
+            color: var(--warning-text);
+        }
+
+        .footer {
+            margin-top: 26px;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
         }
     </style>
 </head>
@@ -710,100 +879,98 @@ def write_html(grouped, result_map, total_screenshots):
 
 <div class="summary-grid">
     <div class="summary-card">
-        <div class="summary-label">Test Cases With Screenshots</div>
+        <div class="summary-label">Test Cases</div>
         <div class="summary-value">{total_tests}</div>
     </div>
     <div class="summary-card">
         <div class="summary-label">Passed</div>
-        <div class="summary-value" style="color:#067647;">{passed_tests}</div>
+        <div class="summary-value summary-pass">{passed_tests}</div>
     </div>
     <div class="summary-card">
         <div class="summary-label">Failed</div>
-        <div class="summary-value" style="color:#b42318;">{failed_tests}</div>
+        <div class="summary-value summary-fail">{failed_tests}</div>
     </div>
     <div class="summary-card">
         <div class="summary-label">Not Run / Unknown</div>
-        <div class="summary-value" style="color:#344054;">{not_run_tests}</div>
+        <div class="summary-value summary-neutral">{not_run_tests}</div>
     </div>
     <div class="summary-card">
-        <div class="summary-label">Screenshots Embedded</div>
+        <div class="summary-label">Screenshots</div>
         <div class="summary-value">{total_screenshots}</div>
     </div>
 </div>
         """
     )
 
-    if total_screenshots == 0:
+    if total_tests == 0:
         html_parts.append(
             """
 <div class="empty">
-    No screenshots found under runtime/screenshots.
+    No test results found. Check runtime/reports/runner_results.json.
 </div>
             """
         )
-    else:
-        for application, app_data in grouped.items():
-            html_parts.append(
-                f"""
+
+    for application, app_data in grouped.items():
+        html_parts.append(
+            f"""
 <div class="application-title">{html.escape(app_data["display"])}</div>
-                """
+            """
+        )
+
+        for module, test_cases in app_data["modules"].items():
+            module_screenshot_count = sum(
+                len(test_data["screenshots"])
+                for test_data in test_cases.values()
             )
 
-            for module, test_cases in app_data["modules"].items():
-                module_screenshot_count = sum(
-                    len(test_data["screenshots"])
-                    for test_data in test_cases.values()
-                )
-
-                html_parts.append(
-                    f"""
+            html_parts.append(
+                f"""
 <div class="module-card">
     <div class="module-title">
         {html.escape(module)}
         <span class="badge count-badge">{module_screenshot_count} screenshots</span>
     </div>
+                """
+            )
+
+            for test_case_id, test_data in test_cases.items():
+                status = get_status(
+                    result_map,
+                    application,
+                    test_case_id
+                )
+
+                duration = get_duration(
+                    result_map,
+                    application,
+                    test_case_id
+                )
+
+                screenshots = test_data["screenshots"]
+
+                html_parts.append(
+                    f"""
+<div class="test-card">
+    <div class="test-header">
+        <div>
+            <div class="test-id">{html.escape(test_data["name"])}</div>
+            <div class="test-name">Reference ID: {html.escape(test_case_id)}</div>
+        </div>
+        <div>
+            <span class="badge {status_class(status)}">{html.escape(status)}</span>
+            <span class="badge count-badge">{len(screenshots)} screenshots</span>
+            <span class="badge duration-badge">{html.escape(duration)}</span>
+        </div>
+    </div>
+
+    <details open>
+        <summary>View screenshots</summary>
                     """
                 )
 
-                for test_case_id, test_data in test_cases.items():
-                    status = get_status(
-                        result_map,
-                        application,
-                        test_case_id
-                    )
-
-                    duration = get_duration(
-                        result_map,
-                        application,
-                        test_case_id
-                    )
-
-                    screenshots = test_data["screenshots"]
-
-                    display_title = test_data["name"]
-
-                    technical_id = test_case_id
-
-                    html_parts.append(
-                        f"""
-                    <div class="test-card">
-                        <div class="test-header">
-                            <div>
-                                <div class="test-id">{html.escape(display_title)}</div>
-                                <div class="test-name">Reference ID: {html.escape(technical_id)}</div>
-                            </div>
-                            <div>
-                                <span class="badge {status_class(status)}">{html.escape(status)}</span>
-                                <span class="badge count-badge">{len(screenshots)} screenshots</span>
-                                <span class="badge count-badge">{html.escape(duration)}</span>
-                            </div>
-                        </div>
-
-                        <details open>
-                            <summary>Screenshots</summary>
-                            <div class="screenshot-grid">
-                        """
-                    )
+                if screenshots:
+                    html_parts.append('<div class="screenshot-grid">')
 
                     for screenshot in screenshots:
                         image_src = os.path.relpath(
@@ -817,28 +984,40 @@ def write_html(grouped, result_map, total_screenshots):
 
                         html_parts.append(
                             f"""
-                                    <div class="shot-card">
-                                        <img src="{safe_image_src}" alt="{safe_file_name}">
-                                        <div class="shot-body">
-                                            <div class="step-name">{safe_step_name}</div>
-                                            <div class="file-name">{safe_file_name}</div>
-                                        </div>
-                                    </div>
+            <div class="shot-card">
+                {safe_image_src}">
+                <div class="shot-body">
+                    <div class="step-name">{safe_step_name}</div>
+                    <div class="file-name">{safe_file_name}</div>
+                </div>
+            </div>
                             """
                         )
 
+                    html_parts.append("</div>")
+                else:
                     html_parts.append(
                         """
+        <div class="no-screenshots">
+            No screenshots were captured for this test case.
         </div>
-    </details>
-</div>
                         """
                     )
 
-                html_parts.append("</div>")
+                html_parts.append(
+                    """
+    </details>
+</div>
+                    """
+                )
+
+            html_parts.append("</div>")
 
     html_parts.append(
         """
+<div class="footer">
+    Generated by Playwright Automation Runner
+</div>
 </div>
 </body>
 </html>
@@ -853,8 +1032,14 @@ def write_html(grouped, result_map, total_screenshots):
 
 def generate_html_report():
     result_map = load_results()
+    grouped = build_grouped_from_results(result_map)
+
     screenshots = collect_screenshots()
-    grouped = group_screenshots(screenshots)
+
+    grouped = attach_screenshots_to_grouped(
+        grouped,
+        screenshots
+    )
 
     return write_html(
         grouped,
@@ -864,5 +1049,5 @@ def generate_html_report():
 
 
 if __name__ == "__main__":
-    path = generate_html_report()
-    print(f"Generated HTML report: {path}")
+    report_path = generate_html_report()
+    print(f"Generated HTML report: {report_path}")
