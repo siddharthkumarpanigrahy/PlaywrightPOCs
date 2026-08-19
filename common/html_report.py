@@ -242,6 +242,36 @@ def display_application(application):
 
 
 def infer_metadata(file_name):
+    lower_name = file_name.lower()
+
+    # --------------------------------------------------
+    # OTC-GUI Smoke screenshots
+    # Examples:
+    # login_logout_success_20260819_104611.png
+    # otc_login_page_loaded.png
+    # otc_credentials_entered.png
+    # otc_after_login.png
+    # --------------------------------------------------
+
+    if (
+        lower_name.startswith("login_logout")
+        or lower_name.startswith("otc_login")
+        or lower_name.startswith("otc_credentials")
+        or lower_name.startswith("otc_after_login")
+        or lower_name.startswith("otc_after_logout")
+        or "login_logout_success" in lower_name
+    ):
+        return (
+            "OTC_GUI",
+            "Smoke Test",
+            "OTC_SMOKE_TC001",
+            "Smoke Test: Login and Logout"
+        )
+
+    # --------------------------------------------------
+    # Normal MC-GUI and OTC-GUI test screenshots
+    # --------------------------------------------------
+
     application = infer_application(file_name)
     tc_number = extract_tc_number(file_name)
 
@@ -249,18 +279,18 @@ def infer_metadata(file_name):
         metadata = MC_TEST_METADATA.get(
             tc_number,
             {
-                "id": f"OTCT-7968_TC_{tc_number}",
-                "module": "Unmapped",
-                "name": "Unmapped MC-GUI test"
+                "id": f"MC_TEST_TC_{tc_number}",
+                "module": "General Validation",
+                "name": f"MC-GUI Functional Validation TC {tc_number}"
             }
         )
     else:
         metadata = OTC_TEST_METADATA.get(
             tc_number,
             {
-                "id": f"OTCT-7968_TC_{tc_number}",
-                "module": "Unmapped",
-                "name": "Unmapped OTC-GUI test"
+                "id": f"OTC_TEST_TC_{tc_number}",
+                "module": "General Validation",
+                "name": f"OTC-GUI Functional Validation TC {tc_number}"
             }
         )
 
@@ -271,16 +301,30 @@ def get_step_name(file_name):
     name_without_extension = os.path.splitext(file_name)[0]
     lower_name = name_without_extension.lower()
 
+    if lower_name.startswith("login_logout_success"):
+        return "Login and Logout Success"
+
+    if lower_name.startswith("otc_login"):
+        return "OTC Login Page"
+
+    if lower_name.startswith("otc_credentials"):
+        return "Credentials Entered"
+
+    if lower_name.startswith("otc_after_login"):
+        return "After Login"
+
+    if lower_name.startswith("otc_after_logout"):
+        return "After Logout"
+
     if lower_name.startswith("mc_tc"):
         parts = name_without_extension.split("_")
-        return " ".join(parts[2:]).strip()
+        return " ".join(parts[2:]).replace("-", " ").strip().title()
 
     if lower_name.startswith("tc"):
         parts = name_without_extension.split("_")
-        return " ".join(parts[1:]).strip()
+        return " ".join(parts[1:]).replace("-", " ").strip().title()
 
-    return name_without_extension
-
+    return name_without_extension.replace("_", " ").replace("-", " ").title()
 
 def encode_image_base64(path):
     with open(path, "rb") as image_file:
@@ -736,24 +780,28 @@ def write_html(grouped, result_map, total_screenshots):
 
                     screenshots = test_data["screenshots"]
 
+                    display_title = test_data["name"]
+
+                    technical_id = test_case_id
+
                     html_parts.append(
                         f"""
-<div class="test-card">
-    <div class="test-header">
-        <div>
-            <div class="test-id">{html.escape(test_case_id)}</div>
-            <div class="test-name">{html.escape(test_data["name"])}</div>
-        </div>
-        <div>
-            <span class="badge {status_class(status)}">{html.escape(status)}</span>
-            <span class="badge count-badge">{len(screenshots)} screenshots</span>
-            <span class="badge count-badge">{html.escape(duration)}</span>
-        </div>
-    </div>
+                    <div class="test-card">
+                        <div class="test-header">
+                            <div>
+                                <div class="test-id">{html.escape(display_title)}</div>
+                                <div class="test-name">Reference ID: {html.escape(technical_id)}</div>
+                            </div>
+                            <div>
+                                <span class="badge {status_class(status)}">{html.escape(status)}</span>
+                                <span class="badge count-badge">{len(screenshots)} screenshots</span>
+                                <span class="badge count-badge">{html.escape(duration)}</span>
+                            </div>
+                        </div>
 
-    <details open>
-        <summary>View screenshots</summary>
-        <div class="screenshot-grid">
+                        <details open>
+                            <summary>Screenshots</summary>
+                            <div class="screenshot-grid">
                         """
                     )
 
