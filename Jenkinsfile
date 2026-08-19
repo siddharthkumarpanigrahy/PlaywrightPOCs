@@ -223,7 +223,6 @@ ${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
 Runner Results JSON:
 ${env.BUILD_URL}artifact/runtime/reports/runner_results.json
             """,
-            attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
     }
