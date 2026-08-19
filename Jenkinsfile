@@ -224,6 +224,9 @@ ${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
 
 Runner Results JSON:
 ${env.BUILD_URL}artifact/runtime/reports/runner_results.json
+
+
+PLAYWRIGHT UI AUTOMATION TEST EXECUTION COMPLETED. CHECK CONSOLE LOGS AND ARCHIVED REPORTS FOR DETAILS.
             """,
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
