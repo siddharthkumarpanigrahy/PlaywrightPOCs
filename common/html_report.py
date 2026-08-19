@@ -448,7 +448,7 @@ def write_html(grouped, result_map, total_screenshots):
 <html>
 <head>
     <meta charset="utf-8">
-    <title>OTCT-7968 Playwright Execution Report</title>
+    <title>Playwright Execution Report</title>
     <style>
         body {
             margin: 0;
@@ -660,7 +660,7 @@ def write_html(grouped, result_map, total_screenshots):
     html_parts.append(
         f"""
 <div class="header">
-    <h1>OTCT-7968 Playwright Execution Report</h1>
+    <h1>Playwright Execution Report</h1>
     <div class="sub">Generated at {html.escape(generated_at)}</div>
 </div>
 

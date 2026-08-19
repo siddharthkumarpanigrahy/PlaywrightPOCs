@@ -133,7 +133,6 @@ pipeline {
                     echo "Running Daily Playwright UI Test Runner"
                     echo "APPLICATION=${APPLICATION}"
                     echo "PACK=${PACK}"
-                    echo "TEST_ID=${TEST_ID}"
                     echo "STOP_ON_FAIL=${STOP_ON_FAIL}"
                     echo "HEADLESS=${HEADLESS}"
                     echo "======================================"
@@ -152,7 +151,7 @@ pipeline {
 
 post {
     always {
-        echo 'Preparing single HTML screenshot report attachment...'
+        echo 'Preparing zipped HTML report artifact...'
 
         sh '''
             mkdir -p runtime/email_attachments
@@ -160,15 +159,13 @@ post {
 
             if [ -f runtime/reports/screenshot_report.html ]; then
                 zip -j runtime/email_attachments/screenshot_report.zip runtime/reports/screenshot_report.html
-                echo "Attached screenshot report as ZIP"
+                echo "Created zipped screenshot report artifact"
             else
-                echo "runtime/reports/screenshot_report.html not found. No report attached."
+                echo "runtime/reports/screenshot_report.html not found. No report zip created."
             fi
-            
+
             ls -l runtime/email_attachments || true
         '''
-
-        
 
         archiveArtifacts(
             artifacts: 'runtime/screenshots/**/*.png',
@@ -208,9 +205,6 @@ ${params.APPLICATION}
 Pack:
 ${params.PACK}
 
-Test ID:
-${params.TEST_ID}
-
 Node:
 ${env.NODE_NAME}
 
@@ -220,27 +214,29 @@ ${env.BUILD_URL}
 HTML Execution Report:
 ${env.BUILD_URL}artifact/runtime/reports/screenshot_report.html
 
+Zipped HTML Report:
+${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
+
 Runner Summary:
 ${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
 
 Runner Results JSON:
 ${env.BUILD_URL}artifact/runtime/reports/runner_results.json
-    """,
-    attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
-    to: 'siddharth.panigrahy@deutsche-boerse.com'
-)
+            """,
+            attachmentsPattern: 'runtime/email_attachments/screenshot_report.zip',
+            to: 'siddharth.panigrahy@deutsche-boerse.com'
+        )
     }
 
     success {
-        echo 'Daily Playwright UI test execution completed successfully. Check console logs and archived screenshots for details.'
+        echo 'Daily Playwright UI test execution completed successfully. Check console logs and archived reports for details.'
     }
 
     failure {
-        echo 'Daily Playwright UI test execution failed. Check console logs and archived screenshots.'
+        echo 'Daily Playwright UI test execution failed. Check console logs and archived reports.'
     }
 
     cleanup {
         echo 'Pipeline cleanup completed.'
     }
-}
 }
