@@ -120,7 +120,7 @@ pipeline {
                     rm -rf runtime/logs
                     rm -rf runtime/reports
                     rm -rf runtime/email_attachments
-                    
+
                     mkdir -p runtime
                     mkdir -p runtime/screenshots
                     mkdir -p runtime/logs
@@ -218,9 +218,6 @@ ${env.BUILD_URL}
 
 HTML Execution Report:
 ${env.BUILD_URL}artifact/runtime/reports/screenshot_report.html
-
-Zipped HTML Report:
-${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
 
 Runner Summary:
 ${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
