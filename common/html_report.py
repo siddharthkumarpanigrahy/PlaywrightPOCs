@@ -762,15 +762,18 @@ def write_html(grouped, result_map, total_screenshots):
                             screenshot["absolute_path"]
                         )
 
+                        safe_file_name = html.escape(screenshot["file_name"])
+                        safe_step_name = html.escape(screenshot["step_name"])
+
                         html_parts.append(
                             f"""
-            <div class="shot-card">
-                {encoded_image}">
-                <div class="shot-body">
-                    <div class="step-name">{html.escape(screenshot["step_name"])}</div>
-                    <div class="file-name">{html.escape(screenshot["file_name"])}</div>
-                </div>
-            </div>
+                                    <div class="shot-card">
+                                        <img src="{encoded_image}" alt="{safe_file_name}">
+                                        <div class="shot-body">
+                                            <div class="step-name">{safe_step_name}</div>
+                                            <div class="file-name">{safe_file_name}</div>
+                                        </div>
+                                    </div>
                             """
                         )
 
