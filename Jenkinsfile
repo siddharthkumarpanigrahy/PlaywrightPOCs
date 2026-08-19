@@ -116,6 +116,11 @@ pipeline {
         stage('Prepare Runtime Folders') {
             steps {
                 sh '''
+                    rm -rf runtime/screenshots
+                    rm -rf runtime/logs
+                    rm -rf runtime/reports
+                    rm -rf runtime/email_attachments
+                    
                     mkdir -p runtime
                     mkdir -p runtime/screenshots
                     mkdir -p runtime/logs
