@@ -201,17 +201,17 @@ post {
             body: """
 Daily Playwright UI Automation Test Execution Completed
 
-Result: ${currentBuild.currentResult}
+[ Result ] : ${currentBuild.currentResult}
 
-Application(s): ${params.APPLICATION}
+[Application(s)] : ${params.APPLICATION}
 
-Pack(s): ${params.PACK}
+[ Pack(s) ] : ${params.PACK}
 
-Node: ${env.NODE_NAME}
+[ Node ] : ${env.NODE_NAME}
 
-Build URL: ${env.BUILD_URL}
+[ Build URL ] : ${env.BUILD_URL}
 
-
+${env.CurrentBuild.Number}
 
 
 [Playwright Automation Runner © 2026]
