@@ -372,3 +372,29 @@ INLINE_CSS = """
     --neutral-text: #344054;
     --neutral-border: #d0d5dd;
     """
+def generate_html_report():
+    result_map = load_results()
+
+    grouped = build_grouped_from_results(
+        result_map
+    )
+
+    screenshots = collect_screenshots(
+        result_map
+    )
+
+    grouped = attach_screenshots_to_grouped(
+        grouped,
+        screenshots
+    )
+
+    return write_html( # type: ignore
+        grouped,
+        result_map,
+        len(screenshots)
+    )
+
+
+if __name__ == "__main__":
+    report_path = generate_html_report()
+    print(f"Generated HTML report: {report_path}")
