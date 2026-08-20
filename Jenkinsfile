@@ -211,7 +211,9 @@ Daily Playwright UI Automation Test Execution Completed
 
 [ Build URL ] : ${env.BUILD_URL}
 
-${env.CurrentBuild.Number}
+[Playwright Report (ZIP)] : ${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
+
+
 
 
 [Playwright Automation Runner © 2026]
