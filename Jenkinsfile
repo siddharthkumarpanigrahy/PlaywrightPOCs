@@ -203,15 +203,13 @@ Daily Playwright UI Automation Test Execution Completed
 
 [ Result ] : ${currentBuild.currentResult}
 
-[Application(s)] : ${params.APPLICATION}
+[ Application(s) ] : ${params.APPLICATION}
 
 [ Pack(s) ] : ${params.PACK}
 
 [ Node ] : ${env.NODE_NAME}
 
-[ Build URL ] : ${env.BUILD_URL}
-
-[Playwright Report (ZIP)] : ${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
+[ Playwright Report ] : ${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
 
 
 
