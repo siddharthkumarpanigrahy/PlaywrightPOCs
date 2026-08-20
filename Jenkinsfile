@@ -209,6 +209,8 @@ Daily Playwright UI Automation Test Execution Completed
 
 [ Node ] : ${env.NODE_NAME}
 
+[ Build ] : ${env.BUILD_URL}
+
 [ Playwright Report ] : ${env.BUILD_URL}artifact/runtime/email_attachments/screenshot_report.zip
 
 
