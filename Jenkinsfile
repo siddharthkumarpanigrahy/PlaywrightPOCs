@@ -216,17 +216,7 @@ ${env.NODE_NAME}
 Build URL:
 ${env.BUILD_URL}
 
-HTML Execution Report:
-${env.BUILD_URL}artifact/runtime/reports/screenshot_report.html
-
-Runner Summary:
-${env.BUILD_URL}artifact/runtime/reports/runner_summary.txt
-
-Runner Results JSON:
-${env.BUILD_URL}artifact/runtime/reports/runner_results.json
-
-
-PLAYWRIGHT UI AUTOMATION TEST EXECUTION COMPLETED. CHECK CONSOLE LOGS AND ARCHIVED REPORTS FOR DETAILS.
+[Playwright Automation Runner © 2026]
             """,
             to: 'siddharth.panigrahy@deutsche-boerse.com'
         )
